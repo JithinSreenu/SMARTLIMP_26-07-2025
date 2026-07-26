@@ -1,0 +1,3254 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://api.fontshare.com; font-src 'self' https://api.fontshare.com; connect-src 'self'; img-src 'self' data: blob:; media-src 'self'; object-src 'none'; frame-src 'none';">
+<meta name="description" content="Prosthetic Limb Telemetry Studio — live biomechanics, device state, and session capture for STM32-based prosthetic telemetry.">
+<title>Prosthetic Limb Telemetry Studio</title>
+
+<script src="plotly.min.js"></script>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@500,700,800&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — macOS-inspired glassmorphism system
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Spacing — 4px grid */
+  --space-1: 4px;   --space-2: 8px;   --space-3: 12px;  --space-4: 16px;
+  --space-5: 20px;  --space-6: 24px;  --space-8: 32px;  --space-10: 40px;
+  --space-12: 48px; --space-16: 64px;
+
+  /* Radii */
+  --radius-s: 8px;  --radius-m: 12px; --radius-l: 16px; --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* Typography */
+  --font-ui: 'Satoshi', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  --font-head: 'Cabinet Grotesk', 'Satoshi', -apple-system, sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', ui-monospace, Consolas, monospace;
+
+  /* macOS Window */
+  --traffic-red: #ff5f57;
+  --traffic-yellow: #febc2e;
+  --traffic-green: #28c840;
+  --titlebar-h: 38px;
+
+  /* Glass effects */
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --glass-blur: blur(24px) saturate(180%);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.4);
+  --shadow-glow: 0 0 20px rgba(47, 168, 155, 0.15);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d0d0f;
+  --bg-elevated: #141416;
+  --bg-secondary: #1a1a1e;
+  --bg-tertiary: #202024;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-hover: rgba(255, 255, 255, 0.08);
+  --surface-active: rgba(255, 255, 255, 0.12);
+
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.1);
+  --border-accent: rgba(47, 168, 155, 0.3);
+
+  --text: #f5f5f7;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-tertiary: rgba(255, 255, 255, 0.35);
+  --text-dim: rgba(255, 255, 255, 0.25);
+
+  --accent: #2fa89b;
+  --accent-bright: #3dd4c4;
+  --accent-soft: rgba(47, 168, 155, 0.12);
+  --accent-glow: rgba(47, 168, 155, 0.25);
+
+  --amber: #f5a623;
+  --amber-soft: rgba(245, 166, 35, 0.12);
+  --red: #ff453a;
+  --red-soft: rgba(255, 69, 58, 0.12);
+  --blue: #0a84ff;
+  --blue-soft: rgba(10, 132, 255, 0.12);
+  --green: #30d158;
+  --green-soft: rgba(48, 209, 88, 0.12);
+  --purple: #bf5af2;
+  --purple-soft: rgba(191, 90, 242, 0.12);
+
+  --c-force: #2fa89b;
+  --c-moment: #f5a623;
+  --c-knee: #0a84ff;
+  --c-batt: #30d158;
+  --c-valve: #bf5af2;
+
+  --grid-line: rgba(255, 255, 255, 0.04);
+  --input-bg: rgba(255, 255, 255, 0.04);
+  --input-bg-focus: rgba(255, 255, 255, 0.08);
+
+  --focus: #2fa89b;
+  --focus-ring: 0 0 0 3px rgba(47, 168, 155, 0.25);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f5f7;
+  --bg-elevated: #ffffff;
+  --bg-secondary: #f0f0f2;
+  --bg-tertiary: #e8e8eb;
+  --surface: rgba(0, 0, 0, 0.03);
+  --surface-hover: rgba(0, 0, 0, 0.06);
+  --surface-active: rgba(0, 0, 0, 0.1);
+
+  --border: rgba(0, 0, 0, 0.06);
+  --border-strong: rgba(0, 0, 0, 0.1);
+  --border-accent: rgba(15, 123, 112, 0.3);
+
+  --text: #1d1d1f;
+  --text-secondary: rgba(0, 0, 0, 0.55);
+  --text-tertiary: rgba(0, 0, 0, 0.35);
+  --text-dim: rgba(0, 0, 0, 0.2);
+
+  --accent: #0f7b70;
+  --accent-bright: #0a9e8f;
+  --accent-soft: rgba(15, 123, 112, 0.1);
+  --accent-glow: rgba(15, 123, 112, 0.2);
+
+  --amber: #b07f24;
+  --amber-soft: rgba(176, 127, 36, 0.1);
+  --red: #d70015;
+  --red-soft: rgba(215, 0, 21, 0.1);
+  --blue: #0066cc;
+  --blue-soft: rgba(0, 102, 204, 0.1);
+  --green: #248a3d;
+  --green-soft: rgba(36, 138, 61, 0.1);
+  --purple: #8944ab;
+  --purple-soft: rgba(137, 68, 171, 0.1);
+
+  --c-force: #0f7b70;
+  --c-moment: #b07f24;
+  --c-knee: #0066cc;
+  --c-batt: #248a3d;
+  --c-valve: #8944ab;
+
+  --grid-line: rgba(0, 0, 0, 0.04);
+  --input-bg: rgba(0, 0, 0, 0.03);
+  --input-bg-focus: rgba(0, 0, 0, 0.06);
+
+  --focus: #0f7b70;
+  --focus-ring: 0 0 0 3px rgba(15, 123, 112, 0.25);
+
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESET & BASE
+   ═══════════════════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { 
+  scrollbar-width: thin; 
+  scrollbar-color: var(--border-strong) transparent;
+  font-size: 14px;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  background: transparent;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* macOS-style depth layer — creates the frosted-glass backdrop */
+.macos-window::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(160deg, var(--bg) 0%, var(--bg-secondary) 50%, var(--bg-tertiary) 100%);
+  opacity: 0.93;
+  z-index: -1;
+  pointer-events: none;
+}
+
+::selection { background: var(--accent-soft); color: var(--text); }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MACOS WINDOW CHROME — Traffic lights + titlebar
+   ═══════════════════════════════════════════════════════════════════════════ */
+.macos-window {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
+}
+
+.titlebar {
+  height: var(--titlebar-h);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-4);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
+  position: relative;
+  z-index: 100;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-app-region: drag; /* Makes titlebar draggable in Electron */
+}
+
+.titlebar-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.traffic-lights {
+  display: flex;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.traffic-btn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.15s ease;
+}
+.traffic-btn:hover { transform: scale(1.15); }
+.traffic-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px; height: 8px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.traffic-btn:hover::before { opacity: 1; }
+
+.traffic-close { background: var(--traffic-red); }
+.traffic-close::before { 
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath d='M1.5 1.5l5 5M6.5 1.5l-5 5' stroke='%234d0000' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") center no-repeat; 
+}
+
+.traffic-minimize { background: var(--traffic-yellow); }
+.traffic-minimize::before { 
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath d='M1.5 4h5' stroke='%2396500c' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") center no-repeat; 
+}
+
+.traffic-maximize { background: var(--traffic-green); }
+.traffic-maximize::before { 
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath d='M1.5 4.5v2h2M6.5 3.5v-2h-2' stroke='%2300651c' stroke-width='1.2' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") center no-repeat; 
+}
+
+.titlebar-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: -0.01em;
+}
+
+.titlebar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  -webkit-app-region: no-drag;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP LAYOUT — Sidebar + Tab Content
+   ═══════════════════════════════════════════════════════════════════════════ */
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: var(--space-4) var(--space-4) var(--space-3);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sidebar-brand svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.sidebar-brand-text h1 {
+  font-family: var(--font-head);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.sidebar-brand-text p {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 var(--space-3);
+}
+
+.nav-section {
+  margin-bottom: var(--space-4);
+}
+
+.nav-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  padding: var(--space-3) var(--space-3) var(--space-2);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px var(--space-3);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  position: relative;
+}
+
+.nav-item:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.nav-item svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.nav-item.active svg { opacity: 1; }
+
+.nav-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.nav-badge.ok {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.nav-badge.warn {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.sidebar-footer {
+  padding: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.connection-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 10px;
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.connection-pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  position: relative;
+}
+
+.connection-pill .dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  animation: none;
+}
+
+.connection-pill[data-state="usb"] .dot,
+.connection-pill[data-state="ble"] .dot,
+.connection-pill[data-state="demo"] .dot {
+  background: var(--green);
+}
+
+.connection-pill[data-state="usb"] .dot::after,
+.connection-pill[data-state="ble"] .dot::after,
+.connection-pill[data-state="demo"] .dot::after {
+  border-color: var(--green);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.4); opacity: 0; }
+}
+
+.connection-pill[data-state="off"] { border-color: var(--border); }
+.connection-pill[data-state="usb"] { border-color: var(--green); color: var(--green); }
+.connection-pill[data-state="ble"] { border-color: var(--blue); color: var(--blue); }
+.connection-pill[data-state="demo"] { border-color: var(--amber); color: var(--amber); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN CONTENT AREA — Tab-based
+   ═══════════════════════════════════════════════════════════════════════════ */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: transparent;
+}
+
+/* Tab bar */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4) 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 16px;
+  border-radius: var(--radius-m) var(--radius-m) 0 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  border: none;
+  background: transparent;
+  position: relative;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.tab:hover {
+  color: var(--text-secondary);
+  background: var(--surface);
+}
+
+.tab.active {
+  color: var(--text);
+  background: var(--bg-elevated);
+  font-weight: 600;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+}
+
+.tab-close {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.15s;
+  margin-left: 2px;
+}
+
+.tab:hover .tab-close { opacity: 0.5; }
+.tab .tab-close:hover { opacity: 1; background: var(--surface-hover); }
+
+/* Tab content */
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.tab-panel {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: var(--space-4);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.tab-panel.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLASS CARDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
+  overflow: hidden;
+  position: relative;
+}
+
+.glass-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.04);
+}
+
+.glass-card-header {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glass-shadow);
+  overflow: hidden;
+}
+
+.glass-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-3);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.glass-card-header h2 {
+  font-family: var(--font-head);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.glass-card-header .hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.glass-card-header .spacer { flex: 1; }
+
+.glass-card-body {
+  padding: var(--space-4) var(--space-5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KPI GRID — Premium metric cards
+   ═══════════════════════════════════════════════════════════════════════════ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.kpi-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-l);
+  padding: var(--space-4);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  opacity: 0.6;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi-card.force::before { background: linear-gradient(90deg, var(--c-force), transparent); }
+.kpi-card.moment::before { background: linear-gradient(90deg, var(--c-moment), transparent); }
+.kpi-card.knee::before { background: linear-gradient(90deg, var(--c-knee), transparent); }
+.kpi-card.batt::before { background: linear-gradient(90deg, var(--c-batt), transparent); }
+.kpi-card.valve::before { background: linear-gradient(90deg, var(--c-valve), transparent); }
+.kpi-card.state::before { background: linear-gradient(90deg, var(--purple), transparent); }
+.kpi-card.fault::before { background: linear-gradient(90deg, var(--red), transparent); }
+
+.kpi-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-bottom: var(--space-2);
+}
+
+.kpi-value {
+  font-family: var(--font-head);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.kpi-value .unit {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  margin-left: 3px;
+}
+
+.kpi-sub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+.kpi-card.badge-ok .kpi-value { color: var(--green); }
+.kpi-card.badge-warn .kpi-value { color: var(--amber); }
+.kpi-card.badge-fault { border-color: var(--red); }
+.kpi-card.badge-fault .kpi-value { color: var(--red); }
+
+.batt-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface);
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.batt-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--green), var(--accent));
+  transition: width 0.4s ease;
+}
+
+.batt-fill.low { background: linear-gradient(90deg, var(--amber), var(--red)); }
+.batt-fill.crit { background: var(--red); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHARTS GRID
+   ═══════════════════════════════════════════════════════════════════════════ */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.chart-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.chart-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.chart-card-header h3 {
+  font-family: var(--font-head);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chart-swatch {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.chart-box {
+  width: 100%;
+  height: 240px;
+}
+
+.chart-box.tall { height: 360px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORMS — macOS style
+   ═══════════════════════════════════════════════════════════════════════════ */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.form-grid .full { grid-column: 1 / -1; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text);
+  transition: all 0.15s ease;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--accent);
+  background: var(--input-bg-focus);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.field input[readonly] {
+  color: var(--text-tertiary);
+}
+
+.field textarea {
+  min-height: 64px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* Fix: ensure select dropdown options are visible in dark mode */
+.field select option {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUTTONS — macOS pill style
+   ═══════════════════════════════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-s);
+  border: 1px solid transparent;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-bright);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: var(--red-soft);
+  color: var(--red);
+  border-color: rgba(255, 69, 58, 0.2);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(255, 69, 58, 0.2);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.btn-sm { min-height: 28px; padding: 0 10px; font-size: 12px; }
+.btn-lg { min-height: 40px; padding: 0 20px; font-size: 14px; }
+
+.btn-row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.btn-row .btn { flex: 1; min-width: 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SEGMENTED CONTROL — macOS style tabs
+   ═══════════════════════════════════════════════════════════════════════════ */
+.segmented {
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  padding: 2px;
+  gap: 1px;
+}
+
+.segment {
+  padding: 5px 14px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.segment:hover { color: var(--text); }
+
+.segment.active {
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOGGLE SWITCH — macOS style
+   ═══════════════════════════════════════════════════════════════════════════ */
+.toggle {
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 1.5px;
+  left: 1.5px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.toggle:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle:checked::after {
+  transform: translateX(16px);
+  background: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAG / BADGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tag-accent { background: var(--accent-soft); color: var(--accent); }
+.tag-amber { background: var(--amber-soft); color: var(--amber); }
+.tag-red { background: var(--red-soft); color: var(--red); }
+.tag-green { background: var(--green-soft); color: var(--green); }
+.tag-blue { background: var(--blue-soft); color: var(--blue); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATUS INDICATORS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+}
+
+.status-dot.live {
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+}
+
+.status-dot.live::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid var(--green);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.status-dot.warn { background: var(--amber); }
+.status-dot.error { background: var(--red); }
+.status-dot.offline { background: var(--text-dim); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ALERTS & NOTICES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-m);
+  border: 1px solid;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.alert-warn {
+  background: var(--amber-soft);
+  border-color: rgba(245, 166, 35, 0.3);
+  color: var(--amber);
+}
+
+.alert-error {
+  background: var(--red-soft);
+  border-color: rgba(255, 69, 58, 0.3);
+  color: var(--red);
+}
+
+.alert-info {
+  background: var(--blue-soft);
+  border-color: rgba(10, 132, 255, 0.3);
+  color: var(--blue);
+}
+
+.alert[hidden] { display: none !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOOLTIP
+   ═══════════════════════════════════════════════════════════════════════════ */
+.tooltip {
+  position: relative;
+}
+
+.tooltip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.95);
+  padding: 5px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.15s ease;
+  z-index: 200;
+  box-shadow: var(--shadow-md);
+}
+
+.tooltip:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease forwards;
+}
+
+
+/* Window controls for frameless window */
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.win-btn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  padding: 0;
+  color: rgba(0,0,0,0.5);
+}
+
+.win-btn:hover { transform: scale(1.15); }
+.win-btn svg { opacity: 0; transition: opacity 0.15s; }
+.win-btn:hover svg { opacity: 1; }
+
+.win-close { background: #ff5f57; }
+.win-close:hover { background: #ff5f57; }
+.win-minimize { background: #febc2e; }
+.win-minimize:hover { background: #febc2e; }
+.win-maximize { background: #28c840; }
+.win-maximize:hover { background: #28c840; }
+
+/* macOS: hide custom controls, use native titleBarOverlay */
+.macos .window-controls { display: none; }
+.macos .titlebar { padding-left: 80px; } /* Space for native traffic lights */
+
+/* Windows/Linux: show custom controls */
+.windows .window-controls,
+.linux .window-controls { display: flex; }
+
+/* Draggable titlebar area */
+.titlebar { -webkit-app-region: drag; }
+.titlebar button, .titlebar .window-controls { -webkit-app-region: no-drag; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1200px) {
+  .charts-grid { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .sidebar { width: 220px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 700px) {
+  .sidebar { display: none; }
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FULLSCREEN CHART MODE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.fullscreen-chart {
+  position: fixed !important;
+  top: var(--titlebar-h) !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 90 !important;
+  height: calc(100vh - var(--titlebar-h)) !important;
+  width: 100vw !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+.fullscreen-chart .chart-box,
+.fullscreen-chart .chart-box.tall {
+  height: calc(100vh - var(--titlebar-h) - 60px) !important;
+}
+</style>
+</head>
+
+<body>
+<script>
+// Detect platform and add class to body
+const platform = (() => {
+  if (typeof window !== 'undefined' && window.electronAPI) return window.electronAPI.platform;
+  if (navigator.platform.indexOf('Mac') > -1) return 'darwin';
+  if (navigator.platform.indexOf('Win') > -1) return 'win32';
+  return 'linux';
+})();
+document.body.classList.add(platform === 'darwin' ? 'macos' : platform === 'win32' ? 'windows' : 'linux');
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     MACOS WINDOW CHROME
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="macos-window">
+
+  <!-- Titlebar — Frameless Window Controls -->
+  <div class="titlebar" id="app-titlebar">
+    <div class="titlebar-content">
+      <!-- Window Controls (Windows/Linux) or draggable spacer (macOS) -->
+      <div class="window-controls" id="win-controls">
+        <button class="win-btn win-close" onclick="window.electronAPI.closeWindow()" title="Close">
+          <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        </button>
+        <button class="win-btn win-minimize" onclick="window.electronAPI.minimizeWindow()" title="Minimize">
+          <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        </button>
+        <button class="win-btn win-maximize" onclick="window.electronAPI.maximizeWindow()" title="Maximize">
+          <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+        </button>
+      </div>
+
+      <span class="titlebar-title">Prosthetic Limb Telemetry Studio</span>
+
+      <div class="titlebar-actions">
+        <span id="hdr-rate-display" style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);margin-right:12px">0 Hz</span>
+        <button class="btn btn-ghost btn-sm" id="btn-theme" title="Toggle theme">
+          <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15.2 10.4A6.4 6.4 0 0 1 7.6 2.8a6.4 6.4 0 1 0 7.6 7.6z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Body -->
+  <div class="app-body">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <svg width="32" height="32" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="1" width="32" height="32" rx="8" stroke-width="1.2" opacity=".4"/>
+            <path d="M13 5v6.5"/>
+            <path d="M9.5 11.5h7"/>
+            <circle cx="13" cy="16.5" r="3.4"/>
+            <circle cx="13" cy="16.5" r=".9" fill="currentColor" stroke="none"/>
+            <path d="M13 19.9 16.4 27"/>
+            <path d="M16.4 27h5.2"/>
+            <path d="M18.4 24.2l3.1-4.4" opacity=".5"/>
+          </svg>
+          <div class="sidebar-brand-text">
+            <h1>Telemetry Studio</h1>
+            <p>STM32 Prosthetic Interface</p>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">Dashboard</div>
+          <div class="nav-item active" data-tab="overview" onclick="switchTab('overview')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+            Overview
+          </div>
+          <div class="nav-item" data-tab="waveforms" onclick="switchTab('waveforms')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            Waveforms
+          </div>
+          <div class="nav-item" data-tab="3d-view" onclick="switchTab('3d-view')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            3D State Space
+          </div>
+          <div class="nav-item" data-tab="analytics" onclick="switchTab('analytics')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Analytics
+            <span class="nav-badge" id="nav-badge-analytics">New</span>
+          </div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Session</div>
+          <div class="nav-item" data-tab="participant" onclick="switchTab('participant')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Participant
+          </div>
+          <div class="nav-item" data-tab="recording" onclick="switchTab('recording')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+            Recording
+            <span class="nav-badge ok" id="nav-badge-rec" hidden>●</span>
+          </div>
+          <div class="nav-item" data-tab="protocol" onclick="switchTab('protocol')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Protocol
+          </div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Connection</div>
+          <div class="nav-item" data-tab="connection" onclick="switchTab('connection')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            USB / BLE
+          </div>
+          <div class="nav-item" data-tab="thresholds" onclick="switchTab('thresholds')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="3"/></svg>
+            Thresholds
+          </div>
+          <div class="nav-item" data-tab="inspector" onclick="switchTab('inspector')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Frame Inspector
+          </div>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="connection-pill" id="conn-pill" data-state="off">
+          <span class="dot"></span>
+          <span id="conn-pill-text">Disconnected</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Area -->
+    <main class="main-area">
+
+      <!-- Tab Bar -->
+      <div class="tab-bar" id="tab-bar">
+        <button class="tab active" data-tab="overview" onclick="switchTab('overview')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+          Overview
+          <span class="tab-close" onclick="closeTab(event, 'overview')">×</span>
+        </button>
+      </div>
+
+      <!-- Tab Content -->
+      <div class="tab-content" id="tab-content">
+
+        <!-- ═════════════════════════════════════════════════════════════════
+             TAB: OVERVIEW — KPIs + Quick Status
+             ═════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel active" id="panel-overview">
+
+          <!-- KPI Grid -->
+          <div class="kpi-grid">
+            <div class="kpi-card force">
+              <div class="kpi-label">Axial Force</div>
+              <div class="kpi-value" id="kpi-force">—<span class="unit">N</span></div>
+              <div class="kpi-sub">Load cell reading</div>
+            </div>
+            <div class="kpi-card moment">
+              <div class="kpi-label">Knee Moment</div>
+              <div class="kpi-value" id="kpi-moment">—<span class="unit">Nm</span></div>
+              <div class="kpi-sub">Sagittal plane</div>
+            </div>
+            <div class="kpi-card knee">
+              <div class="kpi-label">Knee Angle</div>
+              <div class="kpi-value" id="kpi-knee">—<span class="unit">°</span></div>
+              <div class="kpi-sub">Flexion + / extension −</div>
+            </div>
+            <div class="kpi-card valve">
+              <div class="kpi-label">Valve Drive</div>
+              <div class="kpi-value" id="kpi-valve">—<span class="unit">%</span></div>
+              <div class="kpi-sub">Hydraulic command</div>
+            </div>
+            <div class="kpi-card batt">
+              <div class="kpi-label">Battery</div>
+              <div class="kpi-value" id="kpi-battery">—<span class="unit">V</span></div>
+              <div class="batt-track"><div class="batt-fill" id="batt-fill"></div></div>
+            </div>
+            <div class="kpi-card state">
+              <div class="kpi-label">Gait State</div>
+              <div class="kpi-value" id="kpi-state" style="font-size:18px">—</div>
+              <div class="kpi-sub" id="kpi-state-code">Waiting for data…</div>
+            </div>
+            <div class="kpi-card fault" id="kpi-fault-card">
+              <div class="kpi-label">Fault Status</div>
+              <div class="kpi-value" id="kpi-fault" style="font-size:18px">—</div>
+              <div class="kpi-sub" id="kpi-fault-code">No faults</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Packet Rate</div>
+              <div class="kpi-value" id="kpi-rate">—<span class="unit">Hz</span></div>
+              <div class="kpi-sub">Valid frames / sec</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Frame Age</div>
+              <div class="kpi-value" id="kpi-age">—<span class="unit">ms</span></div>
+              <div class="kpi-sub">Since last valid</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Sequence</div>
+              <div class="kpi-value" id="kpi-seq">—</div>
+              <div class="kpi-sub" id="kpi-gaps">0 gaps</div>
+            </div>
+            <div class="kpi-card" id="kpi-crc-card">
+              <div class="kpi-label">CRC Health</div>
+              <div class="kpi-value" id="kpi-crc" style="font-size:18px">—</div>
+              <div class="kpi-sub" id="kpi-crc-sub">0 errors</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Session Time</div>
+              <div class="kpi-value" id="kpi-session-time" style="font-size:20px">00:00:00</div>
+              <div class="kpi-sub" id="kpi-samples">0 samples</div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="glass-card" style="margin-bottom: var(--space-4);">
+            <div class="glass-card-header">
+              <h2>Quick Actions</h2>
+              <span class="spacer"></span>
+            </div>
+            <div class="glass-card-body">
+              <div class="btn-row">
+                <button class="btn btn-primary btn-lg" id="btn-new-session" onclick="startNewSession()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                  Start New Session
+                </button>
+                <button class="btn btn-danger btn-lg" id="btn-end-session" onclick="endSession()" disabled>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                  End Session
+                </button>
+                <button class="btn btn-ghost btn-lg" id="btn-demo" onclick="startDemo()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  Demo Mode
+                </button>
+                <button class="btn btn-ghost btn-lg" id="btn-pause" onclick="togglePause()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                  Pause
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Device Health -->
+          <div class="glass-card">
+            <div class="glass-card-header">
+              <h2>Device Health</h2>
+              <span class="hint">Real-time diagnostics</span>
+              <span class="spacer"></span>
+              <span class="status-dot live" id="health-dot"></span>
+            </div>
+            <div class="glass-card-body">
+              <div class="form-grid" style="gap: var(--space-3);">
+                <div class="field"><label>Gait / Device State</label><input readonly id="health-state" value="—"></div>
+                <div class="field"><label>Fault Register</label><input readonly id="health-fault" value="—"></div>
+                <div class="field"><label>Packet Loss (gaps)</label><input readonly id="health-gaps" value="0"></div>
+                <div class="field"><label>CRC Errors</label><input readonly id="health-crc" value="0"></div>
+                <div class="field"><label>Dropped / Invalid</label><input readonly id="health-dropped" value="0 / 0"></div>
+                <div class="field"><label>Connection Quality</label><input readonly id="health-quality" value="—"></div>
+                <div class="field"><label>Last Received</label><input readonly id="health-last" value="—"></div>
+                <div class="field"><label>Battery Voltage</label><input readonly id="health-batt" value="—"></div>
+              </div>
+
+              <div class="alert alert-warn" id="stale-banner" hidden style="margin-top: var(--space-4);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Telemetry stale — no valid packet for over 1 second. Charts are preserved.
+              </div>
+
+              <div class="alert alert-error" id="fault-alarm" hidden style="margin-top: var(--space-3);" role="alert">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span id="fault-alarm-text">Fault active — inspect device before continuing.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════════════════════════
+             TAB: WAVEFORMS — All charts
+             ═════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-waveforms">
+          <div class="glass-card" style="margin-bottom: var(--space-4);">
+            <div class="glass-card-header">
+              <h2>Live Waveforms</h2>
+              <span class="chart-sig"><span class="chart-swatch" style="background:var(--c-force)"></span>Force</span>
+              <span class="chart-sig"><span class="chart-swatch" style="background:var(--c-moment)"></span>Moment</span>
+              <span class="chart-sig"><span class="chart-swatch" style="background:var(--c-knee)"></span>Knee</span>
+              <span class="chart-sig"><span class="chart-swatch" style="background:var(--c-batt)"></span>Battery</span>
+              <span class="spacer"></span>
+              <label style="font-size:12px;color:var(--text-tertiary)">Window</label>
+              <select class="segment" id="sel-window" onchange="S.windowS=parseInt(this.value)||10" style="margin-left:8px;min-height:28px;">
+                <option value="5">5s</option>
+                <option value="10" selected>10s</option>
+                <option value="30">30s</option>
+                <option value="60">60s</option>
+              </select>
+            </div>
+            <div class="glass-card-body" style="padding: var(--space-3);">
+              <div class="charts-grid">
+                <div class="chart-card">
+                  <div class="chart-card-header"><h3>Force</h3><span style="font-size:11px;color:var(--text-tertiary)">N</span></div>
+                  <div class="chart-box" id="chart-force"></div>
+                </div>
+                <div class="chart-card">
+                  <div class="chart-card-header"><h3>Moment</h3><span style="font-size:11px;color:var(--text-tertiary)">Nm</span></div>
+                  <div class="chart-box" id="chart-moment"></div>
+                </div>
+                <div class="chart-card">
+                  <div class="chart-card-header"><h3>Knee Angle</h3><span style="font-size:11px;color:var(--text-tertiary)">deg</span></div>
+                  <div class="chart-box" id="chart-knee"></div>
+                </div>
+                <div class="chart-card">
+                  <div class="chart-card-header"><h3>Battery & Valve</h3><span style="font-size:11px;color:var(--text-tertiary)">V / %</span></div>
+                  <div class="chart-box" id="chart-batt"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════════════════════════
+             TAB: 3D VIEW — Biomechanical state space
+             ═════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-3d-view">
+          <div class="glass-card">
+            <div class="glass-card-header">
+              <h2>Biomechanical State Space</h2>
+              <span class="hint">3D trajectory: knee angle × force × moment</span>
+              <span class="spacer"></span>
+              <label style="font-size:12px;color:var(--text-tertiary);display:flex;align-items:center;gap:6px">
+                <input type="checkbox" id="chk-autoscale" checked style="width:14px;height:14px"> Auto-scale
+              </label>
+              <button class="btn btn-ghost btn-sm" onclick="resetCamera()">Reset Camera</button>
+            </div>
+            <div class="glass-card-body" style="padding: 0;">
+              <div class="chart-box tall" id="chart-3d" style="height: 500px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════════════════════════
+             TAB: ANALYTICS — New advanced features
+             ═════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-analytics">
+          <div class="glass-card" style="margin-bottom: var(--space-4);">
+            <div class="glass-card-header">
+              <h2>Gait Cycle Analytics</h2>
+              <span class="hint">Automated gait phase detection & metrics</span>
+            </div>
+            <div class="glass-card-body">
+              <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="kpi-card">
+                  <div class="kpi-label">Cadence</div>
+                  <div class="kpi-value" id="analytics-cadence">—<span class="unit">steps/min</span></div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Stride Time</div>
+                  <div class="kpi-value" id="analytics-stride">—<span class="unit">s</span></div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Stance %</div>
+                  <div class="kpi-value" id="analytics-stance">—<span class="unit">%</span></div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Swing %</div>
+                  <div class="kpi-value" id="analytics-swing">—<span class="unit">%</span></div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Peak Force</div>
+                  <div class="kpi-value" id="analytics-peak-force">—<span class="unit">N</span></div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Peak Moment</div>
+                  <div class="kpi-value" id="analytics-peak-moment">—<span class="unit">Nm</span></div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Knee ROM</div>
+                  <div class="kpi-value" id="analytics-rom">—<span class="unit">°</span></div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">Symmetry Index</div>
+                  <div class="kpi-value" id="analytics-symmetry">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="charts-grid">
+            <div class="glass-card">
+              <div class="glass-card-header"><h2>Gait Cycle Histogram</h2></div>
+              <div class="glass-card-body">
+                <div class="chart-box" id="chart-histogram" style="height: 280px;"></div>
+              </div>
+            </div>
+            <div class="glass-card">
+              <div class="glass-card-header"><h2>Force-Moment Phase Portrait</h2></div>
+              <div class="glass-card-body">
+                <div class="chart-box" id="chart-phase" style="height: 280px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════════════════════════
+             TAB: PARTICIPANT — Form
+             ═════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-participant">
+          <div class="glass-card">
+            <div class="glass-card-header">
+              <h2>Participant & Device</h2>
+              <span class="tag tag-accent" id="rec-tag">Not recording</span>
+              <span class="spacer"></span>
+            </div>
+            <div class="glass-card-body">
+              <form class="form-grid" id="form-participant" autocomplete="off" onsubmit="return false">
+                <div class="field"><label>Participant / Subject ID</label><input id="f-subject" maxlength="40" placeholder="e.g. SUBJ-07"></div>
+                <div class="field"><label>Patient Initials</label><input id="f-initials" maxlength="8" placeholder="—"></div>
+                <div class="field"><label>Limb Side</label>
+                  <select id="f-side"><option value="left">Left</option><option value="right">Right</option><option value="bilateral">Bilateral</option></select>
+                </div>
+                <div class="field"><label>Prosthetic Type / Model</label><input id="f-prostype" maxlength="40" placeholder="e.g. Transfemoral, microprocessor knee"></div>
+                <div class="field"><label>Socket Type</label><input id="f-socket" maxlength="40" placeholder="e.g. Ischial containment"></div>
+                <div class="field"><label>Knee / Actuator Model</label><input id="f-knee" maxlength="40" placeholder="e.g. SmartKnee v2"></div>
+                <div class="field"><label>Clinician / Operator</label><input id="f-clinician" maxlength="40" placeholder="Name"></div>
+                <div class="field"><label>Session Label</label><input id="f-session-label" maxlength="40" placeholder="e.g. Overground walk A"></div>
+                <div class="field"><label>Calibration Profile</label><input id="f-calib" maxlength="40" placeholder="e.g. CAL-2026-07-A"></div>
+                <div class="field"><label>Device Serial Number</label><input id="f-serial" maxlength="40" placeholder="e.g. SN-U585-0042"></div>
+                <div class="field full"><label>Session Notes</label><textarea id="f-notes" maxlength="500" placeholder="Session observations…"></textarea></div>
+                <div class="field full"><label>Session Start Time</label><input id="f-start-time" readonly value="Not started"></div>
+              </form>
+
+              <div class="alert alert-info" style="margin-top: var(--space-4);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                Patient details remain local and are included only in exported files. No data is transmitted externally.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════════════════════════
+             TAB: RECORDING — Export & session management
+             ═════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-recording">
+          <div class="glass-card" style="margin-bottom: var(--space-4);">
+            <div class="glass-card-header">
+              <h2>Session Recording</h2>
+              <span class="tag" id="rec-state-badge">Not recording</span>
+              <span class="spacer"></span>
+              <span id="rec-count" style="font-family:var(--font-mono);font-size:13px;color:var(--text-secondary)">0 samples</span>
+            </div>
+            <div class="glass-card-body">
+              <div class="btn-row" style="margin-bottom: var(--space-4);">
+                <button class="btn btn-primary btn-lg" onclick="startNewSession()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                  Start Recording
+                </button>
+                <button class="btn btn-danger btn-lg" onclick="endSession()" id="btn-end-rec" disabled>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                  Stop Recording
+                </button>
+              </div>
+
+              <div class="form-grid">
+                <div class="field full">
+                  <label>Export Format</label>
+                  <div class="segmented">
+                    <button class="segment active" onclick="setExportFormat('csv', this)">CSV</button>
+                    <button class="segment" onclick="setExportFormat('json', this)">JSON</button>
+                    <button class="segment" onclick="setExportFormat('mat', this)">MAT</button>
+                    <button class="segment" onclick="setExportFormat('xdf', this)">XDF</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="btn-row" style="margin-top: var(--space-4);">
+                <button class="btn btn-primary" onclick="exportData()" id="btn-export" disabled>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Export Session
+                </button>
+                <button class="btn btn-ghost" onclick="clearSessionData()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  Clear Data
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="glass-card-header"><h2>Session History</h2></div>
+            <div class="glass-card-body">
+              <div id="session-history" style="color:var(--text-tertiary);text-align:center;padding:var(--space-8);">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3;margin-bottom:var(--space-3)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg>
+                <p>No sessions recorded yet.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════════════════════════
+             TAB: PROTOCOL — Configuration
+             ═════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-protocol">
+          <div class="glass-card" style="margin-bottom: var(--space-4);">
+            <div class="glass-card-header">
+              <h2>Protocol Configuration</h2>
+              <span class="tag tag-amber">Placeholders</span>
+              <span class="spacer"></span>
+            </div>
+            <div class="glass-card-body">
+              <div class="alert alert-warn" style="margin-bottom: var(--space-4);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Byte map, header and CRC are placeholders. Replace from <code>SmartProtocol_BuildPacket()</code> once firmware mapping is known.
+              </div>
+
+              <div class="form-grid">
+                <div class="field"><label>Header Bytes (hex)</label><input id="cfg-header" maxlength="11" spellcheck="false" value="AA 55"></div>
+                <div class="field"><label>CRC Algorithm</label>
+                  <select id="cfg-crc-type"><option value="CRC16" selected>CRC-16/MODBUS</option><option value="CRC16-CCITT">CRC-16/CCITT-FALSE</option></select>
+                </div>
+                <div class="field full" style="flex-direction:row;align-items:center;gap:var(--space-3)">
+                  <input type="checkbox" id="cfg-crc-enabled" checked style="width:18px;height:18px">
+                  <label for="cfg-crc-enabled" style="font-size:13px;color:var(--text);font-weight:500">Enable CRC validation</label>
+                </div>
+              </div>
+
+              <button class="btn btn-primary" onclick="applyProtocol()" style="margin-top: var(--space-4);">Apply Protocol Settings</button>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="glass-card-header"><h2>Protocol Field Map</h2></div>
+            <div class="glass-card-body">
+              <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:var(--font-mono)">
+                  <thead>
+                    <tr style="border-bottom:1px solid var(--border);text-align:left">
+                      <th style="padding:8px;color:var(--text-tertiary);font-family:var(--font-ui);font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Field</th>
+                      <th style="padding:8px;color:var(--text-tertiary);font-family:var(--font-ui);font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Offset</th>
+                      <th style="padding:8px;color:var(--text-tertiary);font-family:var(--font-ui);font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Type</th>
+                      <th style="padding:8px;color:var(--text-tertiary);font-family:var(--font-ui);font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Scale</th>
+                      <th style="padding:8px;color:var(--text-tertiary);font-family:var(--font-ui);font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Unit</th>
+                    </tr>
+                  </thead>
+                  <tbody id="proto-field-table">
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">sequence</td><td style="padding:8px">2</td><td style="padding:8px">uint8</td><td style="padding:8px">1</td><td style="padding:8px">—</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">force</td><td style="padding:8px">3</td><td style="padding:8px">int16</td><td style="padding:8px">0.01</td><td style="padding:8px">N</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">moment</td><td style="padding:8px">5</td><td style="padding:8px">int16</td><td style="padding:8px">0.01</td><td style="padding:8px">Nm</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">kneeAngle</td><td style="padding:8px">7</td><td style="padding:8px">int16</td><td style="padding:8px">0.01</td><td style="padding:8px">deg</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">valve</td><td style="padding:8px">9</td><td style="padding:8px">uint16</td><td style="padding:8px">1</td><td style="padding:8px">%</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">battery</td><td style="padding:8px">11</td><td style="padding:8px">uint16</td><td style="padding:8px">0.01</td><td style="padding:8px">V</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px">state</td><td style="padding:8px">13</td><td style="padding:8px">uint8</td><td style="padding:8px">1</td><td style="padding:8px">—</td></tr>
+                    <tr><td style="padding:8px">fault</td><td style="padding:8px">14</td><td style="padding:8px">uint8</td><td style="padding:8px">1</td><td style="padding:8px">—</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════════════════════════
+             TAB: CONNECTION — USB / BLE
+             ═════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-connection">
+          <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
+
+            <!-- USB Serial -->
+            <div class="glass-card">
+              <div class="glass-card-header">
+                <h2>USB Serial</h2>
+                <span class="tag tag-green" id="usb-status-badge">Ready</span>
+              </div>
+              <div class="glass-card-body">
+                <div class="alert alert-info" id="usb-support-note" hidden style="margin-bottom:var(--space-4)">
+                  Web Serial unavailable. Use Chrome/Edge desktop for ST-Link access.
+                </div>
+
+                <div class="form-grid">
+                  <div class="field"><label>Baud Rate</label>
+                    <select id="sel-baud">
+                      <option>9600</option><option>19200</option><option>38400</option>
+                      <option>57600</option><option selected>115200</option><option>230400</option>
+                      <option>460800</option><option>921600</option>
+                    </select>
+                  </div>
+                  <div class="field"><label>Port Status</label><input readonly id="usb-port-status" value="None selected"></div>
+                </div>
+
+                <div class="btn-row" style="margin-top: var(--space-4);">
+                  <button class="btn btn-primary" id="btn-usb-connect" onclick="connectUsb()">Connect USB</button>
+                  <button class="btn btn-ghost" id="btn-usb-disconnect" onclick="disconnectAll()" disabled>Disconnect</button>
+                </div>
+
+                <div class="field" style="margin-top: var(--space-4);">
+                  <label>Command</label>
+                  <div style="display:flex;gap:8px;">
+                    <input id="usb-cmd" maxlength="64" placeholder="show / data / smart" style="flex:1">
+                    <button class="btn btn-ghost" id="btn-usb-send" onclick="sendUsbCommand()" disabled>Send</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bluetooth LE -->
+            <div class="glass-card">
+              <div class="glass-card-header">
+                <h2>Bluetooth LE</h2>
+                <span class="tag tag-blue" id="ble-status-badge">Ready</span>
+              </div>
+              <div class="glass-card-body">
+                <div class="alert alert-warn" style="margin-bottom:var(--space-4)">
+                  BLE UUIDs are placeholders — enter your firmware GATT UUIDs before connecting.
+                </div>
+
+                <div class="form-grid">
+                  <div class="field full"><label>Device Name Filter</label><input id="ble-name" maxlength="40" placeholder="e.g. SmartKnee-U585"></div>
+                  <div class="field full"><label>Service UUID</label><input id="ble-service" maxlength="40" spellcheck="false" placeholder="0000ffe0-0000-1000-8000-00805f9b34fb"></div>
+                  <div class="field full"><label>Notify Characteristic UUID</label><input id="ble-notify" maxlength="40" spellcheck="false" placeholder="0000ffe1-0000-1000-8000-00805f9b34fb"></div>
+                  <div class="field full"><label>Write Characteristic UUID</label><input id="ble-write" maxlength="40" spellcheck="false" placeholder="0000ffe2-0000-1000-8000-00805f9b34fb"></div>
+                </div>
+
+                <div class="btn-row" style="margin-top: var(--space-4);">
+                  <button class="btn btn-primary" id="btn-ble-connect" onclick="connectBle()">Connect BLE</button>
+                  <button class="btn btn-ghost" id="btn-ble-disconnect" onclick="disconnectAll()" disabled>Disconnect</button>
+                </div>
+
+                <div class="field" style="margin-top: var(--space-4);">
+                  <label>Command</label>
+                  <div style="display:flex;gap:8px;">
+                    <input id="ble-cmd" maxlength="64" placeholder="show / data / smart" style="flex:1">
+                    <button class="btn btn-ghost" id="btn-ble-send" onclick="sendBleCommand()" disabled>Send</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════════════════════════
+             TAB: THRESHOLDS — Configuration with CRC
+             ═════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-thresholds">
+          <div class="glass-card" style="margin-bottom: var(--space-4);">
+            <div class="glass-card-header">
+              <h2>Threshold Configuration</h2>
+              <span class="tag tag-accent">CRC16</span>
+            </div>
+            <div class="glass-card-body">
+              <p style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-4)">
+                Edit min/max limits and transmit as a structured packet with CRC16 to the controller.
+                Packet format: <code>[START][TYPE][LEN][PAYLOAD][CRC16]</code>
+              </p>
+
+              <div class="form-grid" id="threshold-form">
+                <div class="field"><label>Force min (N)</label><input id="thr-force-min" type="number" step="0.01" value="0"></div>
+                <div class="field"><label>Force max (N)</label><input id="thr-force-max" type="number" step="0.01" value="100"></div>
+                <div class="field"><label>Moment min (Nm)</label><input id="thr-moment-min" type="number" step="0.01" value="0"></div>
+                <div class="field"><label>Moment max (Nm)</label><input id="thr-moment-max" type="number" step="0.01" value="20"></div>
+                <div class="field"><label>Knee min (°)</label><input id="thr-knee-min" type="number" step="0.01" value="0"></div>
+                <div class="field"><label>Knee max (°)</label><input id="thr-knee-max" type="number" step="0.01" value="120"></div>
+                <div class="field"><label>Valve min (%)</label><input id="thr-valve-min" type="number" step="0.01" value="0"></div>
+                <div class="field"><label>Valve max (%)</label><input id="thr-valve-max" type="number" step="0.01" value="100"></div>
+                <div class="field"><label>Battery min (V)</label><input id="thr-batt-min" type="number" step="0.01" value="10.5"></div>
+                <div class="field"><label>Battery max (V)</label><input id="thr-batt-max" type="number" step="0.01" value="13"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="glass-card-header"><h2>Packet Settings</h2></div>
+            <div class="glass-card-body">
+              <div class="form-grid">
+                <div class="field"><label>Start Byte</label><input id="thr-start-byte" maxlength="2" spellcheck="false" value="A5"></div>
+                <div class="field"><label>Packet Type</label><input id="thr-type-byte" maxlength="2" spellcheck="false" value="31"></div>
+                <div class="field"><label>CRC Type</label>
+                  <select id="thr-crc-type"><option value="CRC16" selected>CRC-16/MODBUS</option><option value="CRC16-CCITT">CRC-16/CCITT-FALSE</option></select>
+                </div>
+                <div class="field"><label>TX Mode</label>
+                  <select id="thr-send-mode"><option value="binary" selected>Binary frame</option><option value="hex">ASCII hex</option></select>
+                </div>
+              </div>
+
+              <div class="btn-row" style="margin-top: var(--space-4);">
+                <button class="btn btn-ghost" onclick="loadThresholdDefaults()">Load Defaults</button>
+                <button class="btn btn-ghost" onclick="previewThresholdPacket()">Preview Packet</button>
+                <button class="btn btn-primary" id="btn-thr-send-usb" onclick="sendThresholdPacket('usb')" disabled>Send to USB</button>
+                <button class="btn btn-primary" id="btn-thr-send-ble" onclick="sendThresholdPacket('ble')" disabled>Send to BLE</button>
+              </div>
+
+              <div class="field" style="margin-top: var(--space-4);">
+                <label>Packet Preview</label>
+                <textarea id="thr-packet-preview" readonly style="font-family:var(--font-mono);font-size:11px;min-height:120px;"></textarea>
+              </div>
+              <div id="thr-status" style="font-size:12px;color:var(--text-secondary);margin-top:var(--space-2);font-family:var(--font-mono)">Threshold packet not built yet.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════════════════════════
+             TAB: INSPECTOR — Frame debugging
+             ═════════════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="panel-inspector">
+          <div class="glass-card" style="margin-bottom: var(--space-4);">
+            <div class="glass-card-header">
+              <h2>Frame Inspector</h2>
+              <span class="hint">Latest valid frame — binary protocol debugging</span>
+            </div>
+            <div class="glass-card-body">
+              <div style="overflow-x:auto;padding-bottom:var(--space-2)">
+                <div id="insp-hex" style="display:grid;grid-template-columns:repeat(25,minmax(34px,1fr));gap:3px;min-width:900px;font-family:var(--font-mono);font-size:11px">
+                  <span style="color:var(--text-dim);text-align:center">No frame received yet.</span>
+                </div>
+              </div>
+
+              <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:var(--font-mono);margin-top:var(--space-4)">
+                <thead>
+                  <tr style="border-bottom:1px solid var(--border);text-align:left">
+                    <th style="padding:6px 8px;color:var(--text-tertiary);font-family:var(--font-ui);font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Field</th>
+                    <th style="padding:6px 8px;color:var(--text-tertiary);font-family:var(--font-ui);font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Offset</th>
+                    <th style="padding:6px 8px;color:var(--text-tertiary);font-family:var(--font-ui);font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Type</th>
+                    <th style="padding:6px 8px;color:var(--text-tertiary);font-family:var(--font-ui);font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Raw</th>
+                    <th style="padding:6px 8px;color:var(--text-tertiary);font-family:var(--font-ui);font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Scale</th>
+                    <th style="padding:6px 8px;color:var(--text-tertiary);font-family:var(--font-ui);font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Value</th>
+                  </tr>
+                </thead>
+                <tbody id="insp-fields"><tr><td colspan="6" style="padding:8px;color:var(--text-tertiary)">No frame received yet.</td></tr></tbody>
+              </table>
+
+              <div style="margin-top:var(--space-4);display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+                <div class="field"><label>CRC Received</label><input readonly id="insp-crc-rx" value="—"></div>
+                <div class="field"><label>CRC Calculated</label><input readonly id="insp-crc-calc" value="—"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="glass-card-header"><h2>Parser Log</h2></div>
+            <div class="glass-card-body">
+              <ul id="parser-log" style="list-style:none;margin:0;padding:0;max-height:200px;overflow-y:auto;font-family:var(--font-mono);font-size:11.5px;display:flex;flex-direction:column;gap:3px" aria-live="polite"></ul>
+            </div>
+          </div>
+        </div>
+
+      </div> <!-- /tab-content -->
+    </main> <!-- /main-area -->
+  </div> <!-- /app-body -->
+</div> <!-- /macos-window -->
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SERIAL PORT PICKER OVERLAY (injected by renderer.js)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB MANAGEMENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+const openTabs = new Set(['overview']);
+let activeTab = 'overview';
+
+function switchTab(tabId) {
+  // Hide "New" badge on Analytics after first visit
+  if (tabId === 'analytics') {
+    localStorage.setItem('telemetry_seen_analytics', '1');
+    const badge = document.getElementById('nav-badge-analytics');
+    if (badge) badge.style.display = 'none';
+  }
+
+  if (!openTabs.has(tabId)) {
+    openTabs.add(tabId);
+    addTabButton(tabId);
+  }
+
+  // Update sidebar
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tabId);
+  });
+
+  // Update tab bar
+  document.querySelectorAll('.tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tabId);
+  });
+
+  // Update panels
+  document.querySelectorAll('.tab-panel').forEach(el => {
+    el.classList.toggle('active', el.id === 'panel-' + tabId);
+  });
+
+  activeTab = tabId;
+
+  // Resize charts when tab becomes visible
+  if (tabId === 'waveforms') {
+    setTimeout(() => {
+      ['chart-force','chart-moment','chart-knee','chart-batt'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) Plotly.Plots.resize(el);
+      });
+    }, 50);
+  }
+  if (tabId === '3d-view') {
+    setTimeout(() => {
+      const el = document.getElementById('chart-3d');
+      if (el) Plotly.Plots.resize(el);
+    }, 50);
+  }
+}
+
+function addTabButton(tabId) {
+  const tabBar = document.getElementById('tab-bar');
+  const labels = {
+    overview: 'Overview', waveforms: 'Waveforms', '3d-view': '3D View',
+    analytics: 'Analytics', participant: 'Participant', recording: 'Recording',
+    protocol: 'Protocol', connection: 'Connection', thresholds: 'Thresholds',
+    inspector: 'Inspector'
+  };
+  const btn = document.createElement('button');
+  btn.className = 'tab';
+  btn.dataset.tab = tabId;
+  btn.innerHTML = `${labels[tabId] || tabId}<span class="tab-close" onclick="closeTab(event, '${tabId}')">&times;</span>`;
+  btn.onclick = () => switchTab(tabId);
+  tabBar.appendChild(btn);
+}
+
+function closeTab(e, tabId) {
+  e.stopPropagation();
+  if (tabId === 'overview') return; // Can't close overview
+  openTabs.delete(tabId);
+  document.querySelector(`.tab[data-tab="${tabId}"]`).remove();
+  if (activeTab === tabId) {
+    switchTab([...openTabs][openTabs.size - 1] || 'overview');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME
+   ═══════════════════════════════════════════════════════════════════════════ */
+let currentTheme = 'dark';
+
+function setTheme(theme) {
+  currentTheme = theme;
+  document.documentElement.dataset.theme = theme;
+  restyleCharts();
+}
+
+document.getElementById('btn-theme').addEventListener('click', () => {
+  setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+});
+
+// Default from system
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+  setTheme('light');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROTOCOL CONFIG (from original)
+   ═══════════════════════════════════════════════════════════════════════════ */
+const PROTOCOL = {
+  FRAME_LENGTH: 25,
+  HEADER: [0xAA, 0x55],
+  HEADER_OFFSET: 0,
+  LITTLE_ENDIAN: true,
+  CRC_ENABLED: true,
+  CRC_OFFSET: 23,
+  CRC_LENGTH: 2,
+  CRC_TYPE: 'CRC16',
+  CRC_DATA_START: 0,
+  CRC_DATA_END: 23,
+  FIELDS: {
+    sequence:  { offset: 2,  type: 'uint8',  scale: 1,    unit: ''    },
+    force:     { offset: 3,  type: 'int16',  scale: 0.01, unit: 'N'   },
+    moment:    { offset: 5,  type: 'int16',  scale: 0.01, unit: 'Nm'  },
+    kneeAngle: { offset: 7,  type: 'int16',  scale: 0.01, unit: 'deg' },
+    valve:     { offset: 9,  type: 'uint16', scale: 1,    unit: '%'   },
+    battery:   { offset: 11, type: 'uint16', scale: 0.01, unit: 'V'   },
+    state:     { offset: 13, type: 'uint8',  scale: 1,    unit: ''    },
+    fault:     { offset: 14, type: 'uint8',  scale: 1,    unit: ''    }
+  }
+};
+
+const STATE_LABELS = { 0: 'Idle', 1: 'Stance', 2: 'Swing', 3: 'Assist', 4: 'Calibration' };
+const FAULT_LABELS = { 0: 'Normal', 1: 'Sensor warning', 2: 'Comm fault', 3: 'Actuator fault', 4: 'Critical fault' };
+const STATE_COLORS = { 0: '#8a8f98', 1: '#2fa89b', 2: '#6a9fd8', 3: '#f5a623', 4: '#30d158' };
+
+const APP = {
+  MAX_CHART_SAMPLES: 6000,
+  MAX_SESSION_SAMPLES: 200000,
+  TRAJ_SAMPLES: 240,
+  LOG_CAP: 60,
+  STALE_MS: 1000,
+  CHART_FLUSH_MS: 100,
+  BATT_MIN_V: 6.0,
+  BATT_MAX_V: 8.4
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RUNTIME STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+const S = {
+  theme: 'dark', transport: 'none', paused: false,
+  sessionActive: false, sessionStart: null, t0: null,
+  lastPacketAt: 0, lastSeq: null, windowS: 10,
+  txMode: 'binary', thresholdPacket: null, thresholdPreviewText: '',
+  rx: new Uint8Array(0),
+  pending: { force:{x:[],y:[]}, moment:{x:[],y:[]}, knee:{x:[],y:[]}, batt:{x:[],y:[]}, valve:{x:[],y:[]} },
+  traj: [], latest: null, latestFrame: null,
+  samples: [], pktTimes: [], crcErrTimes: [],
+  chartsReady: false, inspDirty: false,
+  demo: { timer:null, t0:0, n:0 },
+  usb: { port:null, reader:null, writer:null, reading:false },
+  serialport: { connected: false, cleanup: null },
+  ble: { device:null, server:null, chNotify:null, chWrite:null }
+};
+const stats = { valid:0, invalid:0, crcErr:0, headerErr:0, dropped:0, seqGaps:0, bytes:0 };
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+const $ = (id) => document.getElementById(id);
+const hex = (b) => b.toString(16).padStart(2, '0').toUpperCase();
+const toHex = (arr) => Array.from(arr, hex).join(' ');
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (v, d=2) => (v === null || v === undefined || Number.isNaN(v)) ? '—' : Number(v).toFixed(d);
+const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+function logParser(msg, level='info') {
+  const ul = $('parser-log');
+  const li = document.createElement('li');
+  if (level !== 'info') li.style.color = level === 'warn' ? 'var(--amber)' : 'var(--red)';
+  const t = new Date();
+  li.innerHTML = `<span style="color:var(--text-dim);margin-right:8px">${t.toLocaleTimeString('en-GB')}.${String(t.getMilliseconds()).padStart(3,'0')}</span><span>${escapeHtml(msg)}</span>`;
+  ul.prepend(li);
+  while (ul.children.length > APP.LOG_CAP) ul.removeChild(ul.lastChild);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BINARY READERS & CRC
+   ═══════════════════════════════════════════════════════════════════════════ */
+function readField(dv, def, le) {
+  switch(def.type) {
+    case 'uint8': return dv.getUint8(def.offset);
+    case 'int8': return dv.getInt8(def.offset);
+    case 'int16': return dv.getInt16(def.offset, le);
+    case 'uint16': return dv.getUint16(def.offset, le);
+    case 'int32': return dv.getInt32(def.offset, le);
+    case 'uint32': return dv.getUint32(def.offset, le);
+    case 'float32': return dv.getFloat32(def.offset, le);
+    default: throw new Error('Unknown type: ' + def.type);
+  }
+}
+function fieldByteLength(type) {
+  return {uint8:1, int8:1, int16:2, uint16:2, int32:4, uint32:4, float32:4}[type] || 1;
+}
+
+function crc16(bytes, start, end, type) {
+  if (type === 'CRC16-CCITT') {
+    let crc = 0xFFFF;
+    for (let i = start; i < end; i++) {
+      crc ^= bytes[i] << 8;
+      for (let b = 0; b < 8; b++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+    }
+    return crc;
+  }
+  let crc = 0xFFFF;
+  for (let i = start; i < end; i++) {
+    crc ^= bytes[i];
+    for (let b = 0; b < 8; b++) crc = (crc & 1) ? (crc >>> 1) ^ 0xA001 : crc >>> 1;
+  }
+  return crc & 0xFFFF;
+}
+function calcFrameCrc(frame) { return crc16(frame, PROTOCOL.CRC_DATA_START, PROTOCOL.CRC_DATA_END, PROTOCOL.CRC_TYPE); }
+function readFrameCrc(frame) {
+  const o = PROTOCOL.CRC_OFFSET;
+  return PROTOCOL.LITTLE_ENDIAN ? (frame[o] | (frame[o+1] << 8)) : ((frame[o] << 8) | frame[o+1]);
+}
+function validateCrc(frame) {
+  if (!PROTOCOL.CRC_ENABLED) return true;
+  return readFrameCrc(frame) === calcFrameCrc(frame);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THRESHOLD PACKET
+   ═══════════════════════════════════════════════════════════════════════════ */
+const THRESHOLD_DEFAULTS = Object.freeze({
+  force_min: 0.0, force_max: 100.0, moment_min: 0.0, moment_max: 20.0,
+  knee_min: 0.0, knee_max: 120.0, valve_min: 0.0, valve_max: 100.0,
+  batt_min: 10.5, batt_max: 13.0
+});
+const THRESHOLD_FIELDS = [
+  ['force_min','thr-force-min'], ['force_max','thr-force-max'],
+  ['moment_min','thr-moment-min'], ['moment_max','thr-moment-max'],
+  ['knee_min','thr-knee-min'], ['knee_max','thr-knee-max'],
+  ['valve_min','thr-valve-min'], ['valve_max','thr-valve-max'],
+  ['batt_min','thr-batt-min'], ['batt_max','thr-batt-max']
+];
+
+function parseHexByte(str, fallback=0) {
+  const s = String(str || '').trim();
+  if (!/^[0-9a-fA-F]{1,2}$/.test(s)) return fallback & 0xFF;
+  return parseInt(s, 16) & 0xFF;
+}
+
+function collectThresholds() {
+  const out = {};
+  for (const [key, id] of THRESHOLD_FIELDS) {
+    const v = Number($(id).value);
+    if (!Number.isFinite(v)) throw new Error(`Invalid ${key}`);
+    out[key] = v;
+  }
+  [['force','N'],['moment','Nm'],['knee','deg'],['valve','%'],['batt','V']].forEach(([p,u]) => {
+    if (out[`${p}_min`] > out[`${p}_max`]) throw new Error(`${p} min > max (${u})`);
+  });
+  return out;
+}
+
+function applyThresholdsToForm(values) {
+  for (const [key, id] of THRESHOLD_FIELDS) $(id).value = values[key];
+}
+
+function buildThresholdPacket(values) {
+  const start = parseHexByte($('thr-start-byte').value, 0xA5);
+  const type = parseHexByte($('thr-type-byte').value, 0x31);
+  const crcType = $('thr-crc-type').value;
+  const payload = new Uint8Array(THRESHOLD_FIELDS.length * 4);
+  const dv = new DataView(payload.buffer);
+  THRESHOLD_FIELDS.forEach(([key], idx) => dv.setFloat32(idx*4, values[key], true));
+  const packet = new Uint8Array(1 + 1 + 1 + payload.length + 2);
+  packet[0] = start; packet[1] = type; packet[2] = payload.length;
+  packet.set(payload, 3);
+  const crc = crc16(packet, 0, 3 + payload.length, crcType);
+  packet[3+payload.length] = crc & 0xFF;
+  packet[4+payload.length] = (crc >> 8) & 0xFF;
+  return { packet, payloadLength: payload.length, crc, crcType, start, type, payloadHex: toHex(payload), packetHex: toHex(packet), values };
+}
+
+function renderThresholdPreview(preview) {
+  const lines = [
+    `Start      : 0x${hex(preview.start)}`,
+    `Type       : 0x${hex(preview.type)}`,
+    `Length     : ${preview.payloadLength} bytes`,
+    `CRC type   : ${preview.crcType}`,
+    `Payload    : ${preview.payloadHex}`,
+    `CRC16      : 0x${hex(preview.crc & 0xFF)}${hex((preview.crc >> 8) & 0xFF)}`,
+    `Full frame : ${preview.packetHex}`
+  ];
+  $('thr-packet-preview').value = lines.join('\n');
+  $('thr-status').textContent = `Ready — ${preview.payloadLength} payload bytes, CRC 0x${hex(preview.crc & 0xFF)}${hex((preview.crc >> 8) & 0xFF)}`;
+}
+
+function refreshThresholdPacket() {
+  const values = collectThresholds();
+  const preview = buildThresholdPacket(values);
+  S.thresholdPacket = preview.packet;
+  S.thresholdPreviewText = preview.packetHex;
+  S.txMode = $('thr-send-mode').value;
+  renderThresholdPreview(preview);
+  return preview;
+}
+
+function loadThresholdDefaults() {
+  applyThresholdsToForm(THRESHOLD_DEFAULTS);
+  refreshThresholdPacket();
+  logParser('Threshold defaults loaded.');
+}
+
+function previewThresholdPacket() {
+  try {
+    refreshThresholdPacket();
+    logParser('Threshold packet preview updated.');
+  } catch (err) {
+    $('thr-status').textContent = err.message;
+    logParser('Preview failed: ' + err.message, 'err');
+  }
+}
+
+function sendThresholdPacket(target) {
+  const preview = refreshThresholdPacket();
+  const isHex = $('thr-send-mode').value === 'hex';
+  const payload = isHex ? (preview.packetHex + '\r\n') : preview.packet;
+  writeTransportPayload(target, payload, isHex ? 'text' : 'binary');
+  logParser(`TX (${target.toUpperCase()} threshold): ${isHex ? 'ASCII HEX' : 'BINARY'} ${preview.packetHex}`);
+  $('thr-status').textContent = `Sent via ${target.toUpperCase()}.`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PACKET PARSER
+   ═══════════════════════════════════════════════════════════════════════════ */
+function parsePacket(packet25Bytes) {
+  const dv = new DataView(packet25Bytes.buffer, packet25Bytes.byteOffset, packet25Bytes.byteLength);
+  const le = PROTOCOL.LITTLE_ENDIAN;
+  const out = { fields: {} };
+  for (const [name, def] of Object.entries(PROTOCOL.FIELDS)) {
+    const raw = readField(dv, def, le);
+    out.fields[name] = { raw, value: raw * def.scale, unit: def.unit, offset: def.offset, type: def.type, scale: def.scale };
+  }
+  const f = out.fields;
+  out.sequence = f.sequence.value;
+  out.force = f.force.value;
+  out.moment = f.moment.value;
+  out.kneeAngle = f.kneeAngle.value;
+  out.valve = f.valve.value;
+  out.battery = f.battery.value;
+  out.stateCode = f.state.raw;
+  out.faultCode = f.fault.raw;
+  out.stateLabel = STATE_LABELS[out.stateCode] || `Unknown (${out.stateCode})`;
+  out.faultLabel = FAULT_LABELS[out.faultCode] || `Unknown (${out.faultCode})`;
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RECEIVE PIPELINE
+   ═══════════════════════════════════════════════════════════════════════════ */
+function appendBytes(bytes) {
+  stats.bytes += bytes.length;
+  const merged = new Uint8Array(S.rx.length + bytes.length);
+  merged.set(S.rx, 0);
+  merged.set(bytes, S.rx.length);
+  S.rx = merged;
+  extractFrames();
+}
+
+function findHeader(buf) {
+  const h0 = PROTOCOL.HEADER[0], h1 = PROTOCOL.HEADER[1];
+  for (let i = 0; i + 1 < buf.length; i++) {
+    if (buf[i] === h0 && buf[i+1] === h1) return i;
+  }
+  return -1;
+}
+
+function extractFrames() {
+  const FL = PROTOCOL.FRAME_LENGTH;
+  let guard = 0;
+  while (guard++ < 1000) {
+    const idx = findHeader(S.rx);
+    if (idx === -1) {
+      const keep = (S.rx.length && S.rx[S.rx.length-1] === PROTOCOL.HEADER[0]) ? 1 : 0;
+      const drop = S.rx.length - keep;
+      if (drop > 0) stats.headerErr += drop;
+      S.rx = S.rx.slice(S.rx.length - keep);
+      return;
+    }
+    if (idx > 0) { stats.headerErr += idx; stats.dropped++; S.rx = S.rx.slice(idx); }
+    if (S.rx.length < FL) return;
+    const frame = S.rx.slice(0, FL);
+    if (validateCrc(frame)) {
+      S.rx = S.rx.slice(FL);
+      processPacket(frame);
+    } else {
+      stats.crcErr++; stats.invalid++; stats.dropped++;
+      S.crcErrTimes.push(Date.now());
+      logParser(`CRC mismatch — resynchronizing`, 'warn');
+      S.rx = S.rx.slice(1);
+    }
+  }
+}
+
+function processPacket(frame) {
+  const d = parsePacket(frame);
+  const now = Date.now();
+  stats.valid++;
+  if (S.lastSeq !== null && d.sequence !== S.lastSeq) {
+    const expected = (S.lastSeq + 1) & 0xFF;
+    if (d.sequence !== expected) {
+      const gap = (d.sequence - expected + 256) & 0xFF;
+      stats.seqGaps += gap;
+      logParser(`Sequence gap: +${gap} lost`, 'warn');
+    }
+  }
+  S.lastSeq = d.sequence;
+  S.lastPacketAt = now;
+  if (S.t0 === null) S.t0 = now;
+  S.latest = d;
+  S.latestFrame = frame;
+  S.inspDirty = true;
+  S.pktTimes.push(now);
+
+  const t = (now - S.t0) / 1000;
+
+  if (S.sessionActive && S.samples.length < APP.MAX_SESSION_SAMPLES) {
+    S.samples.push({
+      timestamp_iso: new Date(now).toISOString(),
+      elapsed_ms: S.sessionStart ? (now - S.sessionStart) : 0,
+      transport: S.transport, sequence: d.sequence,
+      force: +d.force.toFixed(4), moment: +d.moment.toFixed(4),
+      knee_angle: +d.kneeAngle.toFixed(4), valve: +d.valve.toFixed(4),
+      battery: +d.battery.toFixed(4), state_code: d.stateCode,
+      state_label: d.stateLabel, fault_code: d.faultCode,
+      fault_label: d.faultLabel, crc_ok: true, raw_hex: toHex(frame)
+    });
+  }
+
+  if (!S.paused) {
+    S.pending.force.x.push(t); S.pending.force.y.push(d.force);
+    S.pending.moment.x.push(t); S.pending.moment.y.push(d.moment);
+    S.pending.knee.x.push(t); S.pending.knee.y.push(d.kneeAngle);
+    S.pending.batt.x.push(t); S.pending.batt.y.push(d.battery);
+    S.pending.valve.x.push(t); S.pending.valve.y.push(d.valve);
+    S.traj.push({ t, knee: d.kneeAngle, force: d.force, moment: d.moment, state: d.stateCode });
+    if (S.traj.length > APP.TRAJ_SAMPLES) S.traj.splice(0, S.traj.length - APP.TRAJ_SAMPLES);
+  }
+
+  updateDashboard(d);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DASHBOARD UPDATES
+   ═══════════════════════════════════════════════════════════════════════════ */
+function updateDashboard(d) {
+  $('kpi-force').innerHTML = `${fmt(d.force, 1)}<span class="unit">N</span>`;
+  $('kpi-moment').innerHTML = `${fmt(d.moment, 2)}<span class="unit">Nm</span>`;
+  $('kpi-knee').innerHTML = `${fmt(d.kneeAngle, 1)}<span class="unit">°</span>`;
+  $('kpi-valve').innerHTML = `${fmt(d.valve, 0)}<span class="unit">%</span>`;
+  $('kpi-battery').innerHTML = `${fmt(d.battery, 2)}<span class="unit">V</span>`;
+  $('kpi-state').textContent = d.stateLabel;
+  $('kpi-state-code').textContent = `Code ${d.stateCode}`;
+  $('kpi-seq').textContent = String(d.sequence);
+
+  const pct = clamp((d.battery - APP.BATT_MIN_V) / (APP.BATT_MAX_V - APP.BATT_MIN_V), 0, 1);
+  const fill = $('batt-fill');
+  fill.style.width = (pct * 100).toFixed(0) + '%';
+  fill.className = 'batt-fill' + (pct <= 0.15 ? ' crit' : pct <= 0.35 ? ' low' : '');
+
+  const fc = $('kpi-fault-card');
+  fc.classList.remove('badge-ok', 'badge-warn', 'badge-fault');
+  if (d.faultCode === 0) fc.classList.add('badge-ok');
+  else if (d.faultCode === 1) fc.classList.add('badge-warn');
+  else fc.classList.add('badge-fault');
+  $('kpi-fault').textContent = d.faultLabel;
+  $('kpi-fault-code').textContent = `Code ${d.faultCode}`;
+
+  const cc = $('kpi-crc-card');
+  cc.classList.remove('badge-ok', 'badge-warn', 'badge-fault');
+  if (!PROTOCOL.CRC_ENABLED) { $('kpi-crc').textContent = 'Disabled'; cc.classList.add('badge-warn'); }
+  else if (stats.crcErr === 0) { $('kpi-crc').textContent = 'OK'; cc.classList.add('badge-ok'); }
+  else { $('kpi-crc').textContent = 'Errors'; cc.classList.add('badge-fault'); }
+  $('kpi-crc-sub').textContent = `${stats.crcErr} errors`;
+
+  $('fault-alarm').hidden = d.faultCode === 0;
+  $('fault-alarm-text').textContent = d.faultCode !== 0 ? `Fault ${d.faultCode}: ${d.faultLabel}` : '';
+}
+
+function healthTick() {
+  const now = Date.now();
+  while (S.pktTimes.length && now - S.pktTimes[0] > 1200) S.pktTimes.shift();
+  while (S.crcErrTimes.length && now - S.crcErrTimes[0] > 5000) S.crcErrTimes.shift();
+  const rate = S.pktTimes.length ? Math.round(S.pktTimes.length / 1.2) : 0;
+  $('kpi-rate').innerHTML = `${rate}<span class="unit">Hz</span>`;
+  const rateDisplay = $('hdr-rate-display');
+  if (rateDisplay) rateDisplay.textContent = rate > 0 ? `${rate} Hz` : '0 Hz';
+
+  const age = S.lastPacketAt ? now - S.lastPacketAt : null;
+  $('kpi-age').innerHTML = age === null ? '—<span class="unit">ms</span>' : `${age > 9999 ? (age/1000).toFixed(1) + '<span class="unit">s</span>' : age + '<span class="unit">ms</span>'}`;
+  const stale = S.transport !== 'none' && age !== null && age > APP.STALE_MS;
+  $('stale-banner').hidden = !stale;
+
+  const d = S.latest;
+  $('health-state').value = d ? `${d.stateLabel} (${d.stateCode})` : '—';
+  $('health-fault').value = d ? `${d.faultLabel} (${d.faultCode})` : '—';
+  $('health-gaps').value = stats.seqGaps;
+  $('health-crc').value = stats.crcErr;
+  $('health-dropped').value = `${stats.dropped} / ${stats.invalid}`;
+  $('health-batt').value = d ? `${fmt(d.battery, 2)} V` : '—';
+  $('health-last').value = S.lastPacketAt ? new Date(S.lastPacketAt).toLocaleTimeString('en-GB') : '—';
+  $('kpi-gaps').textContent = `${stats.seqGaps} gaps`;
+
+  const q = $('health-quality');
+  if (S.transport === 'none') q.value = '—';
+  else if (stale || rate === 0) q.value = 'No data';
+  else if (S.crcErrTimes.length > 3) q.value = 'Poor';
+  else if (S.crcErrTimes.length > 0 || stats.seqGaps > 0) q.value = 'Degraded';
+  else q.value = 'Good';
+
+  if (S.sessionActive && S.sessionStart) {
+    const s = Math.floor((now - S.sessionStart) / 1000);
+    $('kpi-session-time').textContent = [s/3600, (s%3600)/60, s%60].map(v => String(Math.floor(v)).padStart(2,'0')).join(':');
+  }
+  $('kpi-samples').textContent = `${S.samples.length.toLocaleString()} samples`;
+  $('rec-count').textContent = `${S.samples.length.toLocaleString()} samples`;
+
+  if (S.inspDirty) { S.inspDirty = false; renderInspector(); }
+}
+
+const FIELD_CLASS = { sequence: 'f-seq', force: 'f-force', moment: 'f-moment' };
+function renderInspector() {
+  const frame = S.latestFrame, d = S.latest;
+  if (!frame || !d) return;
+
+  const wrap = $('insp-hex');
+  let html = '';
+  for (let i = 0; i < frame.length; i++) html += `<span style="color:var(--text-dim);text-align:center;font-size:10px">${i}</span>`;
+  for (let i = 0; i < frame.length; i++) {
+    let cls = '';
+    if (i >= PROTOCOL.CRC_OFFSET && i < PROTOCOL.CRC_OFFSET + PROTOCOL.CRC_LENGTH) cls = 'color:var(--amber)';
+    for (const [name, def] of Object.entries(PROTOCOL.FIELDS)) {
+      if (FIELD_CLASS[name] && i >= def.offset && i < def.offset + fieldByteLength(def.type)) cls = `color:var(--${name === 'force' ? 'c-force' : name === 'moment' ? 'c-moment' : 'c-knee'})`;
+    }
+    html += `<span style="background:var(--surface);border:1px solid var(--border);border-radius:4px;text-align:center;padding:3px 0;${cls};font-size:11px">${hex(frame[i])}</span>`;
+  }
+  wrap.innerHTML = html;
+
+  const rows = Object.entries(d.fields).map(([name, f]) => {
+    const blen = fieldByteLength(f.type);
+    const val = f.scale === 1 ? String(f.raw) : fmt(f.value, 4);
+    return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">${escapeHtml(name)}</td><td style="padding:6px 8px">${f.offset}</td><td style="padding:6px 8px">${f.type}</td><td style="padding:6px 8px">${toHex(frame.slice(f.offset, f.offset+blen))}</td><td style="padding:6px 8px">× ${f.scale}</td><td style="padding:6px 8px">${val}${f.unit ? ' ' + escapeHtml(f.unit) : ''}</td></tr>`;
+  }).join('');
+  $('insp-fields').innerHTML = rows;
+
+  const rxCrc = readFrameCrc(frame), calcCrc = calcFrameCrc(frame);
+  $('insp-crc-rx').value = PROTOCOL.CRC_ENABLED ? `0x${hex(rxCrc >> 8)}${hex(rxCrc & 255)}` : 'disabled';
+  $('insp-crc-calc').value = PROTOCOL.CRC_ENABLED ? `0x${hex(calcCrc >> 8)}${hex(calcCrc & 255)}` : '—';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TRANSPORT MANAGEMENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+function setConnPill(state) {
+  const pill = $('conn-pill');
+  pill.dataset.state = state;
+  $('conn-pill-text').textContent = { off: 'Disconnected', usb: 'USB', ble: 'BLE', demo: 'Demo' }[state] || 'Disconnected';
+}
+
+function updateTransportButtons() {
+  const t = S.transport;
+  $('btn-usb-connect').disabled = t !== 'none';
+  $('btn-ble-connect').disabled = t !== 'none';
+  $('btn-usb-disconnect').disabled = t !== 'usb';
+  $('btn-ble-disconnect').disabled = t !== 'ble';
+  $('btn-usb-send').disabled = !(t === 'usb' && (S.usb.writer || S.serialport.connected));
+  $('btn-ble-send').disabled = !(t === 'ble' && S.ble.chWrite);
+  $('btn-thr-send-usb').disabled = !(t === 'usb' && (S.usb.writer || S.serialport.connected));
+  $('btn-thr-send-ble').disabled = !(t === 'ble' && S.ble.chWrite);
+  $('btn-demo').textContent = t === 'demo' ? 'Demo Running…' : 'Demo Mode';
+
+  $('usb-status-badge').textContent = t === 'usb' ? 'Connected' : 'Ready';
+  $('usb-status-badge').className = t === 'usb' ? 'tag tag-green' : 'tag tag-green';
+  $('ble-status-badge').textContent = t === 'ble' ? 'Connected' : 'Ready';
+  $('ble-status-badge').className = t === 'ble' ? 'tag tag-blue' : 'tag tag-blue';
+}
+
+async function disconnectAll() {
+  if (S.demo.timer) { clearInterval(S.demo.timer); S.demo.timer = null; }
+  // Disconnect Web Serial
+  try {
+    if (S.usb.reader) { S.usb.reading = false; await S.usb.reader.cancel().catch(()=>{}); S.usb.reader.releaseLock(); S.usb.reader = null; }
+    if (S.usb.writer) { S.usb.writer.releaseLock(); S.usb.writer = null; }
+    if (S.usb.port) { await S.usb.port.close().catch(()=>{}); }
+  } catch(e) {}
+  S.usb.port = null;
+  // Disconnect node-serialport
+  if (S.serialport.connected) {
+    try {
+      if (window.electronAPI && window.electronAPI.serialport) {
+        await window.electronAPI.serialport.disconnect();
+      }
+    } catch(e) {}
+    if (S.serialport.cleanup) { S.serialport.cleanup(); S.serialport.cleanup = null; }
+    S.serialport.connected = false;
+  }
+  // Disconnect BLE
+  try {
+    if (S.ble.chNotify) { S.ble.chNotify.removeEventListener('characteristicvaluechanged', onBleNotify); await S.ble.chNotify.stopNotifications().catch(()=>{}); }
+    if (S.ble.device) S.ble.device.removeEventListener('gattserverdisconnected', onBleGone);
+    if (S.ble.server && S.ble.server.connected) S.ble.server.disconnect();
+  } catch(e) {}
+  S.ble = { device: null, server: null, chNotify: null, chWrite: null };
+  if (S.transport !== 'none') logParser('Disconnected.');
+  S.transport = 'none';
+  S.rx = new Uint8Array(0);
+  S.lastSeq = null;
+  setConnPill('off');
+  updateTransportButtons();
+  $('usb-port-status').value = 'None selected';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   USB SERIAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function connectUsb() {
+  await disconnectAll();
+
+  // Try node-serialport first (most reliable for COM ports)
+  if (window.__serialPortAvailable && window.electronAPI && window.electronAPI.serialport) {
+    try {
+      const result = await window.electronAPI.serialport.list();
+      if (result.ports && result.ports.length > 0) {
+        // Show port picker using node-serialport's COM port list
+        showNodeSerialPicker(result.ports);
+        return;
+      } else {
+        logParser('No COM ports found via node-serialport. Trying Web Serial...', 'warn');
+      }
+    } catch (e) {
+      logParser('node-serialport list failed: ' + e.message + '. Trying Web Serial...', 'warn');
+    }
+  }
+
+  // Fallback to Web Serial API — always prompt for port selection
+  if (!('serial' in navigator)) {
+    $('usb-support-note').hidden = false;
+    logParser('Web Serial API not available. Install node-serialport for COM port access.', 'err');
+    return;
+  }
+
+  try {
+    const port = await navigator.serial.requestPort();
+    await openUsbPort(port);
+  } catch (err) {
+    if (err && err.name === 'NotFoundError') {
+      logParser('No port selected or no serial ports available', 'warn');
+    } else if (err && err.name === 'SecurityError') {
+      logParser('Serial permission denied.', 'err');
+    } else {
+      logParser('USB error: ' + (err && err.message ? err.message : String(err)), 'err');
+      $('usb-port-status').value = 'Error';
+    }
+  }
+}
+
+function showNodeSerialPicker(ports) {
+  const overlay = document.createElement('div');
+  overlay.id = 'ns-picker';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(12px);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:var(--font-ui),system-ui,sans-serif;animation:fadeIn 0.2s ease;';
+  const items = ports.map((p, i) => `
+    <div class="ns-item" data-path="${p.path}" style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:all 0.15s ease;display:flex;align-items:center;gap:10px;">
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-tertiary)"><rect x="2" y="2" width="20" height="20" rx="4"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px;color:var(--text);">${p.path}</div>
+        <div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">${p.manufacturer ? p.manufacturer : 'Unknown'}${p.serialNumber ? ' · SN: ' + p.serialNumber : ''}</div>
+      </div>
+    </div>`).join('');
+
+  overlay.innerHTML = `
+    <div style="background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:16px;width:500px;max-width:90vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 32px 64px rgba(0,0,0,0.5);overflow:hidden;">
+      <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);">
+        <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--text);">Select COM Port</h2>
+        <p style="margin:6px 0 0;font-size:12px;color:var(--text-secondary);">Serial ports detected on this system</p>
+      </div>
+      <div style="padding:12px;overflow-y:auto;max-height:320px;display:flex;flex-direction:column;gap:6px;">
+        ${items}
+      </div>
+      <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">
+        <button id="ns-cancel" style="min-height:32px;padding:0 14px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);font:inherit;font-size:12px;cursor:pointer;">Cancel</button>
+        <button id="ns-connect" style="min-height:32px;padding:0 14px;border-radius:6px;border:none;background:var(--accent);color:#fff;font:inherit;font-size:12px;font-weight:600;cursor:pointer;opacity:0.4;" disabled>Connect</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  let selectedPath = null;
+  overlay.querySelectorAll('.ns-item').forEach(item => {
+    item.addEventListener('click', () => {
+      overlay.querySelectorAll('.ns-item').forEach(i => { i.style.borderColor = 'var(--border)'; i.style.background = 'var(--surface)'; });
+      item.style.borderColor = 'var(--accent)';
+      item.style.background = 'var(--accent-soft)';
+      selectedPath = item.dataset.path;
+      overlay.querySelector('#ns-connect').disabled = false;
+      overlay.querySelector('#ns-connect').style.opacity = '1';
+    });
+  });
+
+  overlay.querySelector('#ns-cancel').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#ns-connect').addEventListener('click', async () => {
+    if (!selectedPath) return;
+    overlay.remove();
+    await openNodeSerialPort(selectedPath);
+  });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+}
+
+async function openNodeSerialPort(path) {
+  const baud = parseInt($('sel-baud').value, 10) || 115200;
+  $('usb-port-status').value = `Connecting to ${path}...`;
+  try {
+    const result = await window.electronAPI.serialport.connect({ path, baudRate: baud });
+    if (result.success) {
+      S.transport = 'usb';
+      S.serialport.connected = true;
+      setConnPill('usb');
+      updateTransportButtons();
+      $('usb-port-status').value = `Connected to ${path} @ ${baud} baud`;
+
+      // Set up cleanup
+      if (S.serialport.cleanup) S.serialport.cleanup();
+      const rmData = window.electronAPI.serialport.onData((data) => appendBytes(data));
+      const rmError = window.electronAPI.serialport.onError((msg) => {
+        logParser('Serial error: ' + msg, 'err');
+      });
+      const rmDisc = window.electronAPI.serialport.onDisconnected(() => {
+        logParser('Serial disconnected', 'warn');
+        S.serialport.connected = false;
+        if (S.transport === 'usb') disconnectAll();
+      });
+      S.serialport.cleanup = () => { rmData(); rmError(); rmDisc(); };
+
+      logParser(`node-serialport connected to ${path} @ ${baud} baud`);
+    } else {
+      throw new Error(result.error || 'Connection failed');
+    }
+  } catch (err) {
+    logParser('node-serialport connect failed: ' + err.message, 'err');
+    $('usb-port-status').value = 'Connection failed';
+    S.serialport.connected = false;
+  }
+}
+
+async function openUsbPort(port) {
+  try {
+    const baud = parseInt($('sel-baud').value, 10) || 115200;
+    await port.open({ baudRate: baud });
+    S.usb.port = port;
+    S.transport = 'usb';
+    S.usb.reading = true;
+    setConnPill('usb');
+    updateTransportButtons();
+    const info = port.getInfo ? port.getInfo() : {};
+    $('usb-port-status').value = `Open @ ${baud} baud`;
+    logParser(`USB opened at ${baud} baud — ${info.usbVendorId ? 'VID:' + info.usbVendorId.toString(16) : 'unknown device'}`);
+    try { S.usb.writer = port.writable.getWriter(); updateTransportButtons(); } catch(e) {}
+    S.usb.reader = port.readable.getReader();
+    while (S.usb.reading) {
+      const { value, done } = await S.usb.reader.read();
+      if (done) break;
+      if (value && value.length) appendBytes(value instanceof Uint8Array ? value : new Uint8Array(value));
+    }
+  } catch (err) {
+    logParser('USB open failed: ' + err.message, 'err');
+    $('usb-port-status').value = 'Open failed';
+  } finally {
+    if (S.transport === 'usb') await disconnectAll();
+    else updateTransportButtons();
+  }
+}
+
+async function sendUsbCommand() {
+  const cmd = $('usb-cmd').value.trim();
+  if (!cmd || !S.usb.writer) return;
+  try {
+    await writeTransportPayload('usb', cmd + '\r\n', 'text');
+    logParser(`TX (USB): ${cmd}`);
+    $('usb-cmd').value = '';
+  } catch (err) { logParser('USB write failed: ' + err.message, 'err'); }
+}
+
+async function writeTransportPayload(target, payload, mode='binary') {
+  if (target === 'usb') {
+    if (window.__serialPortAvailable && S.serialport.connected) {
+      await window.electronAPI.serialport.write(mode === 'text' ? ((typeof payload === 'string') ? payload : new TextDecoder().decode(payload)) : payload);
+      return;
+    }
+    if (S.usb.writer) {
+      await S.usb.writer.write(mode === 'text' ? new TextEncoder().encode(payload) : payload);
+      return;
+    }
+    throw new Error('USB writer unavailable');
+  }
+  if (target === 'ble') {
+    if (!S.ble.chWrite) throw new Error('BLE write unavailable');
+    await S.ble.chWrite.writeValue(mode === 'text' ? new TextEncoder().encode(payload) : payload);
+    return;
+  }
+  throw new Error('Unsupported transport: ' + target);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BLUETOOTH LE
+   ═══════════════════════════════════════════════════════════════════════════ */
+function readBleUuids() {
+  return {
+    service: $('ble-service').value.trim(),
+    notify: $('ble-notify').value.trim(),
+    write: $('ble-write').value.trim(),
+    name: $('ble-name').value.trim()
+  };
+}
+
+async function connectBle() {
+  if (!navigator.bluetooth) { $('ble-support-note').hidden = false; return; }
+  const u = readBleUuids();
+  if (!u.service || !u.notify) { logParser('Enter BLE UUIDs first', 'warn'); return; }
+  await disconnectAll();
+  try {
+    const opts = { optionalServices: [u.service] };
+    if (u.name) opts.filters = [{ name: u.name }];
+    else opts.acceptAllDevices = true;
+    const device = await navigator.bluetooth.requestDevice(opts);
+    S.ble.device = device;
+    device.addEventListener('gattserverdisconnected', onBleGone);
+    S.ble.server = await device.gatt.connect();
+    const service = await S.ble.server.getPrimaryService(u.service);
+    S.ble.chNotify = await service.getCharacteristic(u.notify);
+    await S.ble.chNotify.startNotifications();
+    S.ble.chNotify.addEventListener('characteristicvaluechanged', onBleNotify);
+    if (u.write) {
+      try { S.ble.chWrite = await service.getCharacteristic(u.write); }
+      catch(e) { logParser('Write characteristic not found', 'warn'); }
+    }
+    S.transport = 'ble';
+    setConnPill('ble');
+    updateTransportButtons();
+    logParser(`BLE connected: ${device.name || device.id}`);
+  } catch (err) {
+    if (err && err.name === 'NotFoundError') logParser('BLE selection cancelled.');
+    else { logParser('BLE error: ' + (err && err.message ? err.message : String(err)), 'err'); }
+    await disconnectAll();
+  }
+}
+
+function onBleNotify(event) {
+  const dv = event.target.value;
+  appendBytes(new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength));
+}
+function onBleGone() { logParser('BLE disconnected.', 'warn'); disconnectAll(); }
+
+async function sendBleCommand() {
+  const cmd = $('ble-cmd').value.trim();
+  if (!cmd || !S.ble.chWrite) return;
+  try { await writeTransportPayload('ble', cmd, 'text'); logParser(`TX (BLE): ${cmd}`); $('ble-cmd').value = ''; }
+  catch(err) { logParser('BLE write failed: ' + err.message, 'err'); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DEMO MODE
+   ═══════════════════════════════════════════════════════════════════════════ */
+function buildDemoPacket(v) {
+  const p = new Uint8Array(PROTOCOL.FRAME_LENGTH);
+  const dv = new DataView(p.buffer);
+  const le = PROTOCOL.LITTLE_ENDIAN;
+  const F = PROTOCOL.FIELDS;
+  p[PROTOCOL.HEADER_OFFSET] = PROTOCOL.HEADER[0];
+  p[PROTOCOL.HEADER_OFFSET + 1] = PROTOCOL.HEADER[1];
+  dv.setUint8(F.sequence.offset, v.sequence & 0xFF);
+  dv.setInt16(F.force.offset, Math.round(v.force / F.force.scale), le);
+  dv.setInt16(F.moment.offset, Math.round(v.moment / F.moment.scale), le);
+  dv.setInt16(F.kneeAngle.offset, Math.round(v.kneeAngle / F.kneeAngle.scale), le);
+  dv.setUint16(F.valve.offset, Math.round(v.valve / F.valve.scale), le);
+  dv.setUint16(F.battery.offset, Math.round(v.battery / F.battery.scale), le);
+  dv.setUint8(F.state.offset, v.state & 0xFF);
+  dv.setUint8(F.fault.offset, v.fault & 0xFF);
+  const crc = calcFrameCrc(p);
+  if (le) { p[PROTOCOL.CRC_OFFSET] = crc & 0xFF; p[PROTOCOL.CRC_OFFSET + 1] = crc >> 8; }
+  else { p[PROTOCOL.CRC_OFFSET] = crc >> 8; p[PROTOCOL.CRC_OFFSET + 1] = crc & 0xFF; }
+  return p;
+}
+
+function demoGaitSample(t) {
+  const T = 1.1;
+  const phase = (t % T) / T;
+  const bump = (c, w) => Math.exp(-((phase - c) * (phase - c)) / (2 * w * w));
+  const noise = (a) => (Math.random() - 0.5) * 2 * a;
+  let state;
+  if (phase < 0.04) state = 0;
+  else if (phase < 0.58) state = 1;
+  else if (phase < 0.92) state = 2;
+  else state = 3;
+  const knee = 8 + 6 * bump(0.12, 0.06) + 56 * bump(0.78, 0.09) + noise(0.4);
+  const force = phase < 0.58 ? 700 * bump(0.14, 0.07) + 640 * bump(0.44, 0.08) + 120 * bump(0.30, 0.06) + noise(9) : 18 + noise(5);
+  const moment = phase < 0.58 ? 34 * Math.sin(2 * Math.PI * (phase - 0.10) / 0.58) + noise(0.8) : -3 + noise(0.6);
+  const valve = clamp(28 + 62 * bump(0.80, 0.10) - 20 * bump(0.05, 0.03) + noise(1.5), 0, 100);
+  const battery = 8.20 - t * 0.0006 + noise(0.004);
+  const fault = (Math.floor(t) % 45 === 30 && phase < 0.2) ? 1 : 0;
+  return { knee, force, moment, valve, battery, state, fault };
+}
+
+function startDemo() {
+  disconnectAll().then(() => {
+    S.transport = 'demo';
+    S.demo.t0 = Date.now();
+    S.demo.n = 0;
+    setConnPill('demo');
+    updateTransportButtons();
+    logParser('Demo started — 100 Hz synthetic gait');
+    S.demo.timer = setInterval(() => {
+      const t = (Date.now() - S.demo.t0) / 1000;
+      const g = demoGaitSample(t);
+      appendBytes(buildDemoPacket({
+        sequence: S.demo.n & 0xFF, force: g.force, moment: g.moment,
+        kneeAngle: g.knee, valve: g.valve, battery: g.battery, state: g.state, fault: g.fault
+      }));
+      S.demo.n++;
+    }, 10);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SESSION MANAGEMENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+function collectParticipant() {
+  return {
+    subject_id: $('f-subject').value.trim(), patient_initials: $('f-initials').value.trim(),
+    limb_side: $('f-side').value, prosthetic_type: $('f-prostype').value.trim(),
+    socket_type: $('f-socket').value.trim(), knee_actuator_model: $('f-knee').value.trim(),
+    clinician: $('f-clinician').value.trim(), session_label: $('f-session-label').value.trim(),
+    calibration_profile: $('f-calib').value.trim(), device_serial: $('f-serial').value.trim(),
+    notes: $('f-notes').value.trim()
+  };
+}
+
+function startNewSession() {
+  S.samples.length = 0;
+  S.sessionActive = true;
+  S.sessionStart = Date.now();
+  S.t0 = null;
+  S.lastSeq = null;
+  Object.assign(stats, { valid: 0, invalid: 0, crcErr: 0, headerErr: 0, dropped: 0, seqGaps: 0, bytes: 0 });
+  clearCharts();
+  $('f-start-time').value = new Date(S.sessionStart).toLocaleString();
+  $('btn-end-session').disabled = false;
+  $('btn-end-rec').disabled = false;
+  $('btn-export').disabled = true;
+  $('rec-state-badge').textContent = 'Recording';
+  $('rec-state-badge').className = 'tag tag-red';
+  $('rec-tag').textContent = 'Recording';
+  $('rec-tag').className = 'tag tag-red';
+  $('nav-badge-rec').hidden = false;
+  logParser('Session started — recording to memory');
+}
+
+function endSession() {
+  S.sessionActive = false;
+  $('btn-end-session').disabled = true;
+  $('btn-end-rec').disabled = true;
+  $('btn-export').disabled = S.samples.length === 0;
+  $('rec-state-badge').textContent = 'Stopped';
+  $('rec-state-badge').className = 'tag tag-amber';
+  $('rec-tag').textContent = 'Stopped';
+  $('rec-tag').className = 'tag tag-amber';
+  $('nav-badge-rec').hidden = true;
+  logParser(`Session ended: ${S.samples.length} samples`);
+}
+
+let exportFormat = 'csv';
+function setExportFormat(fmt, btn) {
+  exportFormat = fmt;
+  btn.parentElement.querySelectorAll('.segment').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function exportData() {
+  if (exportFormat === 'csv') exportCsv();
+  else if (exportFormat === 'json') exportJson();
+  else alert(`${exportFormat.toUpperCase()} export coming soon!`);
+}
+
+function exportCsv() {
+  const cols = ['timestamp_iso','elapsed_ms','transport','sequence','force_N','moment_Nm','knee_angle_deg','valve_pct','battery_V','state_code','state_label','fault_code','fault_label','crc_ok','raw_hex'];
+  const lines = [cols.join(',')];
+  for (const s of S.samples) {
+    lines.push([s.timestamp_iso, s.elapsed_ms, s.transport, s.sequence, s.force, s.moment, s.knee_angle, s.valve, s.battery, s.state_code, s.state_label, s.fault_code, s.fault_label, s.crc_ok, s.raw_hex].join(','));
+  }
+  downloadFile(lines.join('\r\n'), 'text/csv', 'csv');
+  logParser(`Exported CSV: ${S.samples.length} rows`);
+}
+
+function exportJson() {
+  const payload = {
+    exported_at: new Date().toISOString(),
+    application: 'Prosthetic Limb Telemetry Studio',
+    participant: collectParticipant(),
+    session: { start_time: S.sessionStart ? new Date(S.sessionStart).toISOString() : null, sample_count: S.samples.length, stats: { ...stats } },
+    protocol_config: JSON.parse(JSON.stringify(PROTOCOL)),
+    state_labels: STATE_LABELS, fault_labels: FAULT_LABELS,
+    samples: S.samples
+  };
+  downloadFile(JSON.stringify(payload, null, 2), 'application/json', 'json');
+  logParser(`Exported JSON: ${S.samples.length} samples`);
+}
+
+function downloadFile(content, mime, ext) {
+  const p = collectParticipant();
+  const slug = (p.subject_id || 'session').replace(/[^\w-]+/g, '_').slice(0, 40) || 'session';
+  const isoSafe = new Date(S.sessionStart || Date.now()).toISOString().replace(/[:.]/g, '-');
+  const blob = new Blob([content], { type: mime + ';charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${slug}_${isoSafe}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+function clearSessionData() {
+  S.samples.length = 0;
+  $('btn-export').disabled = true;
+  logParser('Session data cleared');
+}
+
+function togglePause() {
+  S.paused = !S.paused;
+  $('btn-pause').innerHTML = S.paused 
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Resume'
+    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pause';
+  logParser(S.paused ? 'Visualization paused' : 'Visualization resumed');
+}
+
+function clearCharts() {
+  for (const k of Object.keys(S.pending)) { S.pending[k].x.length = 0; S.pending[k].y.length = 0; }
+  S.traj.length = 0;
+  if (!S.chartsReady) return;
+  for (const k of ['force', 'moment', 'knee']) Plotly.restyle(CH[k].id, { x: [[]], y: [[]] }, [0]);
+  Plotly.restyle(CH.batt.id, { x: [[], []], y: [[], []] }, [0, 1]);
+  flush3d();
+  logParser('Charts cleared');
+}
+
+function applyProtocol() {
+  const hexIn = $('cfg-header').value.trim().split(/[\s,]+/).filter(Boolean);
+  if (hexIn.length === 2 && hexIn.every(h => /^[0-9a-fA-F]{1,2}$/.test(h))) {
+    PROTOCOL.HEADER = hexIn.map(h => parseInt(h, 16));
+  } else { logParser('Invalid header — expected two hex bytes', 'err'); return; }
+  PROTOCOL.CRC_TYPE = $('cfg-crc-type').value;
+  PROTOCOL.CRC_ENABLED = $('cfg-crc-enabled').checked;
+  S.rx = new Uint8Array(0);
+  logParser(`Protocol: header ${toHex(PROTOCOL.HEADER)}, CRC ${PROTOCOL.CRC_ENABLED ? PROTOCOL.CRC_TYPE : 'disabled'}`);
+}
+
+function resetCamera() {
+  Plotly.relayout(CH.traj3d.id, { 'scene.camera': CH.traj3d.defaultCamera });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PLOTLY CHARTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+const CH = {};
+
+function chartColors() {
+  return {
+    force: cssVar('--c-force'), moment: cssVar('--c-moment'), knee: cssVar('--c-knee'),
+    batt: cssVar('--c-batt'), valve: cssVar('--c-valve'),
+    text: cssVar('--text-secondary'), grid: cssVar('--grid-line')
+  };
+}
+
+function waveLayout(yTitle, color, extra={}) {
+  const c = chartColors();
+  return Object.assign({
+    margin: { l: 50, r: 14, t: 8, b: 32 },
+    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: 'Satoshi, sans-serif', size: 11, color: c.text },
+    showlegend: false, hovermode: 'x unified',
+    xaxis: { title: { text: 'Time (s)', font: { size: 10 } }, gridcolor: c.grid, zeroline: false },
+    yaxis: { title: { text: yTitle, font: { size: 10, color } }, gridcolor: c.grid, zeroline: false }
+  }, extra);
+}
+
+function initCharts() {
+  const c = chartColors();
+  const cfg = { responsive: true, displayModeBar: false };
+
+  CH.force = { id: 'chart-force', key: 'force' };
+  Plotly.newPlot(CH.force.id, [{ x: [], y: [], type: 'scatter', mode: 'lines', line: { color: c.force, width: 1.6 } }], waveLayout('Force (N)', c.force), cfg);
+
+  CH.moment = { id: 'chart-moment', key: 'moment' };
+  Plotly.newPlot(CH.moment.id, [{ x: [], y: [], type: 'scatter', mode: 'lines', line: { color: c.moment, width: 1.6 } }], waveLayout('Moment (Nm)', c.moment), cfg);
+
+  CH.knee = { id: 'chart-knee', key: 'knee' };
+  Plotly.newPlot(CH.knee.id, [{ x: [], y: [], type: 'scatter', mode: 'lines', line: { color: c.knee, width: 1.6 } }], waveLayout('Knee (deg)', c.knee), cfg);
+
+  CH.batt = { id: 'chart-batt', key: 'batt' };
+  Plotly.newPlot(CH.batt.id, [
+    { x: [], y: [], type: 'scatter', mode: 'lines', name: 'Battery', line: { color: c.batt, width: 1.6 } },
+    { x: [], y: [], type: 'scatter', mode: 'lines', name: 'Valve', yaxis: 'y2', line: { color: c.valve, width: 1.3, dash: 'dot' } }
+  ], waveLayout('Battery (V)', c.batt, {
+    legend: { orientation: 'h', x: 0, y: 1.12, font: { size: 10 } }, showlegend: true,
+    yaxis2: { title: { text: 'Valve (%)', font: { size: 10, color: c.valve } }, overlaying: 'y', side: 'right', range: [0, 105], gridcolor: 'rgba(0,0,0,0)', zeroline: false }
+  }), cfg);
+
+  initChart3d();
+  S.chartsReady = true;
+}
+
+function initChart3d() {
+  const c = chartColors();
+  CH.traj3d = { id: 'chart-3d' };
+  const scene = {
+    xaxis: { title: 'Knee (deg)', color: c.text, gridcolor: c.grid, backgroundcolor: 'rgba(0,0,0,0)' },
+    yaxis: { title: 'Force (N)', color: c.text, gridcolor: c.grid, backgroundcolor: 'rgba(0,0,0,0)' },
+    zaxis: { title: 'Moment (Nm)', color: c.text, gridcolor: c.grid, backgroundcolor: 'rgba(0,0,0,0)' },
+    camera: { eye: { x: 1.5, y: -1.6, z: 1.1 } }
+  };
+  CH.traj3d.defaultCamera = scene.camera;
+  Plotly.newPlot(CH.traj3d.id, [
+    { x: [], y: [], z: [], type: 'scatter3d', mode: 'lines+markers', marker: { size: 2.5, color: [], opacity: 0.75 }, line: { color: cssVar('--text-dim'), width: 2.5 } },
+    { x: [], y: [], z: [], type: 'scatter3d', mode: 'markers', marker: { size: 6, color: [], line: { color: '#fff', width: 1 } } }
+  ], {
+    margin: { l: 0, r: 0, t: 0, b: 0 }, paper_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: 'Satoshi, sans-serif', size: 11, color: c.text },
+    showlegend: false, scene, uirevision: 'keep-camera'
+  }, { responsive: true, displayModeBar: false });
+}
+
+function flushCharts() {
+  if (!S.chartsReady || S.paused) { for (const k of Object.keys(S.pending)) { S.pending[k].x.length = 0; S.pending[k].y.length = 0; } return; }
+  const now = Date.now();
+  const tNow = S.t0 ? (now - S.t0) / 1000 : 0;
+  const x0 = Math.max(0, tNow - S.windowS);
+
+  if (S.pending.force.x.length) {
+    Plotly.extendTraces(CH.force.id, { x: [S.pending.force.x], y: [S.pending.force.y] }, [0], APP.MAX_CHART_SAMPLES);
+    S.pending.force.x.length = 0; S.pending.force.y.length = 0;
+  }
+  if (S.pending.moment.x.length) {
+    Plotly.extendTraces(CH.moment.id, { x: [S.pending.moment.x], y: [S.pending.moment.y] }, [0], APP.MAX_CHART_SAMPLES);
+    S.pending.moment.x.length = 0; S.pending.moment.y.length = 0;
+  }
+  if (S.pending.knee.x.length) {
+    Plotly.extendTraces(CH.knee.id, { x: [S.pending.knee.x], y: [S.pending.knee.y] }, [0], APP.MAX_CHART_SAMPLES);
+    S.pending.knee.x.length = 0; S.pending.knee.y.length = 0;
+  }
+  if (S.pending.batt.x.length) {
+    Plotly.extendTraces(CH.batt.id, { x: [S.pending.batt.x, S.pending.valve.x], y: [S.pending.batt.y, S.pending.valve.y] }, [0, 1], APP.MAX_CHART_SAMPLES);
+    S.pending.batt.x.length = 0; S.pending.batt.y.length = 0;
+    S.pending.valve.x.length = 0; S.pending.valve.y.length = 0;
+  }
+
+  if (S.t0 !== null) {
+    const rel = { 'xaxis.range': [x0, Math.max(tNow, S.windowS)] };
+    for (const k of ['force', 'moment', 'knee', 'batt']) Plotly.relayout(CH[k].id, rel);
+  }
+}
+
+let last3d = 0;
+function flush3d() {
+  if (!S.chartsReady || S.paused) return;
+  const now = Date.now();
+  if (now - last3d < 250) return;
+  last3d = now;
+  const traj = S.traj;
+  const xs = traj.map(p => p.knee), ys = traj.map(p => p.force), zs = traj.map(p => p.moment);
+  const cs = traj.map(p => STATE_COLORS[p.state] || '#8a8f98');
+  const last = traj[traj.length - 1];
+  const auto = $('chk-autoscale').checked;
+  const sceneRange = auto ? {} : { 'scene.xaxis.range': [0, 90], 'scene.yaxis.range': [0, 1000], 'scene.zaxis.range': [-60, 60] };
+  Plotly.react(CH.traj3d.id, [
+    { x: xs, y: ys, z: zs, type: 'scatter3d', mode: 'lines+markers', marker: { size: 2.5, color: cs, opacity: 0.75 }, line: { color: cssVar('--text-dim'), width: 2.5 } },
+    { x: last ? [last.knee] : [], y: last ? [last.force] : [], z: last ? [last.moment] : [], type: 'scatter3d', mode: 'markers', marker: { size: 6, color: last ? [STATE_COLORS[last.state] || '#8a8f98'] : [], line: { color: '#fff', width: 1 } } }
+  ], Object.assign({
+    margin: { l: 0, r: 0, t: 0, b: 0 }, paper_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: 'Satoshi, sans-serif', size: 11, color: chartColors().text },
+    showlegend: false, uirevision: 'keep-camera',
+    scene: {
+      xaxis: { title: 'Knee (deg)', color: chartColors().text, gridcolor: chartColors().grid, backgroundcolor: 'rgba(0,0,0,0)' },
+      yaxis: { title: 'Force (N)', color: chartColors().text, gridcolor: chartColors().grid, backgroundcolor: 'rgba(0,0,0,0)' },
+      zaxis: { title: 'Moment (Nm)', color: chartColors().text, gridcolor: chartColors().grid, backgroundcolor: 'rgba(0,0,0,0)' }
+    }
+  }, sceneRange), { responsive: true, displayModeBar: false });
+}
+
+function restyleCharts() {
+  if (!S.chartsReady) return;
+  const c = chartColors();
+  const base = { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: c.text }, xaxis: { gridcolor: c.grid }, yaxis: { gridcolor: c.grid } };
+  for (const k of ['force', 'moment', 'knee', 'batt']) Plotly.relayout(CH[k].id, base);
+  Plotly.restyle(CH.force.id, { 'line.color': c.force }, [0]);
+  Plotly.restyle(CH.moment.id, { 'line.color': c.moment }, [0]);
+  Plotly.restyle(CH.knee.id, { 'line.color': c.knee }, [0]);
+  Plotly.restyle(CH.batt.id, { 'line.color': c.batt }, [0]);
+  Plotly.restyle(CH.batt.id, { 'line.color': c.valve }, [1]);
+  last3d = 0; flush3d();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FULLSCREEN CHART TOGGLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+function toggleChartFullscreen(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const wasFullscreen = el.classList.contains('fullscreen-chart');
+  // Close any existing fullscreen
+  document.querySelectorAll('.fullscreen-chart').forEach(e => e.classList.remove('fullscreen-chart'));
+  document.body.style.overflow = '';
+  if (!wasFullscreen) {
+    el.classList.add('fullscreen-chart');
+    document.body.style.overflow = 'hidden';
+  }
+  setTimeout(() => {
+    ['chart-force','chart-moment','chart-knee','chart-batt','chart-3d'].forEach(id => {
+      const chartEl = document.getElementById(id);
+      if (chartEl) Plotly.Plots.resize(chartEl);
+    });
+  }, 150);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initCharts();
+  applyThresholdsToForm(THRESHOLD_DEFAULTS);
+  refreshThresholdPacket();
+  updateTransportButtons();
+  setConnPill('off');
+
+  if (localStorage.getItem('telemetry_seen_analytics')) {
+    const badge = document.getElementById('nav-badge-analytics');
+    if (badge) badge.style.display = 'none';
+  }
+
+  setInterval(flushCharts, APP.CHART_FLUSH_MS);
+  setInterval(() => { healthTick(); flush3d(); }, 100);
+
+  logParser('Telemetry Studio ready');
+  logParser('Protocol placeholders — replace from SmartProtocol_BuildPacket()', 'warn');
+});
+</script>
+
+<script src="renderer.js"></script>
+</body>
+</html>
